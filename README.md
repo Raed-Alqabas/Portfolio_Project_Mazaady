@@ -1,4 +1,4 @@
-# 🚗 Car Auction Platform
+# 🚗 MAZAADY - Car Auction Platform
 
 An **online live auction** platform for buying and selling used cars easily and securely — no need to visit showrooms!  The platform ensures **trust**, **transparency**, and **a complete digital experience** for all parties.
 
