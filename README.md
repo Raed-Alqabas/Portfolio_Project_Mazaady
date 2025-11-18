@@ -10,7 +10,10 @@ This project requires skills that might be heavy for a single individual to hand
 ---
 
 ## 🔍 Idea Generation & Evaluation Process
-The idea was chosen after a series of collaborative ideation sessions. It was a peer-driven innovation that came after he thought of a real-life problem people commonly face in the car auctioning market. 
+The idea was chosen after a series of collaborative ideation sessions. It was a peer-driven innovation that came after he thought of a real-life problem people commonly face in the car auctioning market.
+
+During these sessions, we had several potential ideas, including: a site that tests your expertise and recommends needed certifications and study resources, a site for rating restaurants, a site that tracks students' attendance for schools providing bus transportation, and more.
+
 
 After evaluating various concepts with mentors and making sure they were feasible and aligned with the requirements of a successful business model, it has been decided that this idea was the true gem found through our brainstorming process.
 
