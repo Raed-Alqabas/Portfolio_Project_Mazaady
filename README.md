@@ -1,7 +1,18 @@
 # 🚗 Car Auction Platform
 
-An **online live auction** platform for buying and selling used cars easily and securely — no need to visit showrooms!  
-The platform ensures **trust**, **transparency**, and **a complete digital experience** for all parties.
+An **online live auction** platform for buying and selling used cars easily and securely — no need to visit showrooms!  The platform ensures **trust**, **transparency**, and **a complete digital experience** for all parties.
+
+---
+
+## ✊ Team Formation
+This project requires skills that might be heavy for a single individual to handle. Fortunately, we forged our alliance and formed our team. Each member has his unique way of analyzing as well as a distinct area of expertise, allowing us to tackle problems from multiple angles.
+
+---
+
+## 🔍 Idea Generation & Evaluation Process
+The idea was chosen after a series of collaborative ideation sessions. It was a peer-driven innovation that came after he thought of a real-life problem people commonly face in the car auctioning market. 
+
+After evaluating various concepts with mentors and making sure they were feasible and aligned with the requirements of a successful business model, it has been decided that this idea was the true gem found through our brainstorming process.
 
 ---
 
