@@ -156,7 +156,6 @@ To create an online auction platform for used cars that replaces traditional in-
 #### External :
  - Tuwaiq Academy
  - Mentor: Linda Al-Makrami
- - Student: Abdullah Al-Jahdali
-
+ - Mentor: Abdullah Al-Jahdali
 ---
 ⭐ *If you like this project, don’t forget to star the repo!*
