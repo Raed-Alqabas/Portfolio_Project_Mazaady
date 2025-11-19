@@ -123,9 +123,8 @@ To create an online auction platform for used cars that replaces traditional in-
 ## ⚠️ Risk Management
 | Risk | Possible Solution |
 |------|----------------------|
-| Limited experience with bidding tools | Learn about them early and use helpful frameworks. |
-| Integration issues between frontend & backend | Define API endpoints early and keep testing |
-| Database concerns once the platform grows | Plan optimizations from the start |
+| Integrating Mojaz app API with our site | Validating the report traditionally |
+| The seriousness of the seller to sell his car | Pays a percentage of his vehcile before |
 
 ---
 
@@ -155,7 +154,7 @@ To create an online auction platform for used cars that replaces traditional in-
 
 #### External :
  - Tuwaiq Academy
- - Mentor: Linda Al-Makrami
- - Mentor: Abdullah Al-Jahdali
+ - Mentor(s): Linda Al-Makrami, Abdullah Al-Jahdali
+ - Student(s): Abdullah Aldafas
 ---
 ⭐ *If you like this project, don’t forget to star the repo!*
