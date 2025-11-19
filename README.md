@@ -115,7 +115,7 @@ To create an online auction platform for used cars that replaces traditional in-
 ### Out-Of-Scope:
 - Deliviery of Vehicles
 - Mobile App version
-- Physical Verification
+- Physical Check-up
 - Payment Gateway
 
 ---
