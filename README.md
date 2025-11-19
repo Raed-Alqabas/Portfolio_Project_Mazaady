@@ -112,11 +112,11 @@ To create an online auction platform for used cars that replaces traditional in-
 - Registration & Authentication
 - Dashboard Management
 - Notification System
-- Payment Gateway
 ### Out-Of-Scope:
 - Deliviery of Vehicles
-- Mobile version
+- Mobile App version
 - Physical Verification
+- Payment Gateway
 
 ---
 
@@ -151,7 +151,7 @@ To create an online auction platform for used cars that replaces traditional in-
 | [@Rayan Hantoul](https://www.github.com/Ry-88)    | Project Manager  | Defining and dividing tasks, development    |
 | [@Raed Alqabas](https://www.github.com/Raed-Alqabas)      | Team Lead        | Audit, review, and development              |
 | [@Sultan Alsanie](https://www.github.com/octokatherine)   | Developer        | Programming, testing, and debugging         |
-| [@Mohammed Al-Aidaa](https://www.github.com/moha88z)  | Developer        | Programming, testing, and debugging         |
+| [@Mohammed Alayda](https://www.github.com/moha88z)  | Developer        | Programming, testing, and debugging         |
 
 #### External :
  - Tuwaiq Academy
