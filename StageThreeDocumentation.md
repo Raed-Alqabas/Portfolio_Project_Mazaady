@@ -43,6 +43,9 @@ The platform ensures **trust**, **transparency**, and **a complete digital exper
 - Database: SQLite.
 - External APIs: Moyasar for payment gateway.
 
+  <img width="2550" height="1105" alt="image" src="https://github.com/user-attachments/assets/64ab0265-54a4-4f3a-9010-8ddf6a70f1bf" />
+
+
 ---
 
 ⭐ *If you like this project, don’t forget to star the repo!*
