@@ -45,6 +45,16 @@ The platform ensures **trust**, **transparency**, and **a complete digital exper
 
   <img width="2550" height="1105" alt="image" src="https://github.com/user-attachments/assets/64ab0265-54a4-4f3a-9010-8ddf6a70f1bf" />
 
+---
+
+## Plan for SCM and QA Strategies :
+### SCM:
+- Use Git & Github for efficient workflow
+- Correctly writing commit messages
+### QA:
+- Test individual system functions using framework tool
+- Test groups of systems using pytest
+- Test API using Postman
 
 ---
 
