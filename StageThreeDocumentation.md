@@ -224,11 +224,80 @@ sequenceDiagram
 ```
 
 ---
+## External APIs
+
+- Payment Gateway (Moyasar)
+
+Purpose: Wallet top-ups, auction payment processing.
+
+Reason for Choice: Secure, PCI-compliant, widely supported
+
+
+## User Registration API
+
+POST /api/register
+
+Input (JSON)
+{
+  "name": "John Doe",
+  "email": "user@example.com",
+  "password": "123456",
+  "phone": "+966500000000"
+}
+
+Output (JSON)
+{
+  "success": true,
+  "message": "User registered successfully",
+  "data": {
+    "id": 12,
+    "name": "John Doe",
+    "email": "user@example.com",
+    "phone": "+966500000000",
+    "token": "jwt_token_here"
+  }
+}
+
+## User Login API
+
+Endpoint
+POST /api/login
+
+Input
+{
+  "email": "user@example.com",
+  "password": "123456"
+}
+
+Output
+{
+  "success": true,
+  "token": "jwt_token_here"
+}
+
+## List Cars
+
+Endpoint
+GET /api/cars
+
+Output
+[
+  {
+    "id": 1,
+    "brand": "Toyota",
+    "model": "Camry",
+    "price": 35000
+  }
+]
+
+
+---
 
 ## Plan for SCM and QA Strategies :
 ### SCM:
 - Use Git & Github for efficient workflow
 - Correctly writing commit messages
+- use git flow to manage branches
 ### QA:
 - Test individual system functions using framework tool
 - Test groups of systems using pytest
