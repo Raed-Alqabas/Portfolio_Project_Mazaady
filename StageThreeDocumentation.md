@@ -130,7 +130,6 @@ erDiagram
     USERS ||--o{ CARS : owns
     USERS ||--o{ AUCTIONS : creates
     CARS ||--o{ AUCTIONS : listed_in
-    USERS ||--o{ AUCTIONS : places
 
     USERS {
         int id
