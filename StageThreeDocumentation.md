@@ -167,6 +167,64 @@ erDiagram
 ```
 ---
 
+# Sequence Diagrams
+## User Registration
+```
+sequenceDiagram
+    actor User
+    participant Frontend as Front-End (App/Web)
+    participant Backend as Backend (API)
+    participant DB as Database
+
+    User ->> Frontend: Open registration form
+    User ->> Frontend: Enter name, email, password, phone
+    Frontend ->> Backend: POST /register (user data)
+
+    Backend ->> Backend: Validate input
+    Backend ->> DB: Check if email already exists
+    DB -->> Backend: Email OK
+
+    Backend ->> Backend: Hash password
+    Backend ->> DB: Insert new user record
+    DB -->> Backend: User created
+
+    Backend -->> Frontend: Registration success (user object + token)
+    Frontend -->> User: Show welcome/confirmation screen
+
+```
+
+## User Places a Bid on a Car
+```
+sequenceDiagram
+    actor User
+    participant Frontend as Front-End (App/Web)
+    participant Backend as Backend (API)
+    participant AuctionSrv as Auction Service
+    participant DB as Database
+
+    User ->> Frontend: Enter bid amount
+    Frontend ->> Backend: POST /auction/{id}/bid (amount)
+
+    Backend ->> AuctionSrv: Validate auction + bid amount
+    AuctionSrv ->> DB: Get auction details
+    DB -->> AuctionSrv: Auction data
+
+    AuctionSrv ->> DB: Get current highest bid
+    DB -->> AuctionSrv: Highest bid returned
+
+    AuctionSrv ->> AuctionSrv: Compare new bid > highest bid
+    AuctionSrv ->> DB: Insert new bid record
+    DB -->> AuctionSrv: Bid saved
+
+    AuctionSrv -->> Backend: Bid accepted
+    Backend -->> Frontend: Bid confirmed (new bid info)
+    Frontend -->> User: Show updated highest bid
+
+
+```
+
+---
+
 ## Plan for SCM and QA Strategies :
 ### SCM:
 - Use Git & Github for efficient workflow
