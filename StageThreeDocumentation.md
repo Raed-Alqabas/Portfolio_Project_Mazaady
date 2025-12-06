@@ -43,7 +43,7 @@ The platform ensures **trust**, **transparency**, and **a complete digital exper
 - Database: MySQL.
 - External APIs: Moyasar for payment gateway.
 
-  <img width="1284" height="1397" alt="image" src="https://github.com/user-attachments/assets/d578213c-efb2-4309-adc4-12d637c5ca9c" />
+<img width="1644" height="1795" alt="image" src="https://github.com/user-attachments/assets/55d60872-1d83-4794-8129-f695c305b330" />
 
 ---
 
