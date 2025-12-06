@@ -47,6 +47,128 @@ The platform ensures **trust**, **transparency**, and **a complete digital exper
 
 ---
 
+# Backend Key Classes, Attributes, and Methods
+
+## 1. User Class
+
+### Attributes
+- `id`
+- `name`
+- `email`
+- `password`
+- `phoneNumber`
+- `walletBalance`
+- `favorites` (list of Car IDs)
+- `cars` (list of Car objects)
+
+### Methods
+- `register()` — Create a new user account  
+- `login()` — Authenticate user  
+- `updateProfile(data)` — Update user info  
+- `addFavorite(carId)` — Add car to favorites  
+- `removeFavorite(carId)` — Remove from favorites  
+- `depositToWallet(amount)` — Add money to wallet  
+- `withdrawFromWallet(amount)` — Withdraw money  
+- `listCars()` — Return all cars owned by user  
+
+
+---
+
+## 2. Car Class
+
+### Attributes
+- `id`
+- `userId`
+- `brand`
+- `model`
+- `mileage`
+- `price`
+- `notes`
+- `images` (array of image paths)
+- `briefReport`
+- `viewsCount`
+- `saleStatus` (available / sold)
+- `startDate`
+
+### Methods
+- `create()` — Add a new car  
+- `update(data)` — Edit car information  
+- `addImages(images)` — Upload images  
+- `increaseViews()` — Increment views  
+- `markAsSold(buyerId)` — Mark car as sold  
+- `getOwner()` — Return car owner  
+- `startAuction(auctionData)` — Create auction for this car  
+
+
+---
+
+## 3. Auction Class
+
+### Attributes
+- `id`
+- `userId` (auction creator)
+- `carId`
+- `startDate`
+- `endDate`
+- `buyer` (nullable until auction ends)
+
+### Methods
+- `start()` — Start the auction  
+- `end()` — Close auction and determine winner  
+- `placeBid(userId, amount)` — Add a bid  
+- `getHighestBid()` — Return highest bid  
+- `assignBuyer(userId)` — Set the winning buyer  
+- `getCar()` — Get car for this auction  
+- `getAuctionOwner()` — Return the creating user
+
+
+# ER Diagram (Mermaid)
+
+```mermaid
+erDiagram
+
+    USERS ||--o{ CARS : owns
+    USERS ||--o{ AUCTIONS : creates
+    CARS ||--o{ AUCTIONS : listed_in
+    AUCTIONS ||--o{ BIDS : has
+    USERS ||--o{ BIDS : places
+
+    USERS {
+        int id
+        string name
+        string email
+        string password
+        string phoneNumber
+        decimal walletBalance
+        json favorites
+    }
+
+    CARS {
+        int id
+        int userId
+        string brand
+        string model
+        int mileage
+        decimal price
+        text notes
+        json images
+        text briefReport
+        int viewsCount
+        string saleStatus
+        datetime startDate
+    }
+
+    AUCTIONS {
+        int id
+        int userId
+        int carId
+        datetime startDate
+        datetime endDate
+        int buyer
+    }
+```
+---
+
 ## Plan for SCM and QA Strategies :
 ### SCM:
 - Use Git & Github for efficient workflow
