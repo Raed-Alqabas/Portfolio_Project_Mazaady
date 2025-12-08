@@ -1,0 +1,106 @@
+{% load static %}
+{% load crispy_forms_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }}</title>
+
+    <!-- TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="{% static 'index.css' %}">
+</head>
+
+<body class="bg-gray-100">
+
+<!-- Messages -->
+{% if messages %}
+    {% for message in messages %}
+        <script>
+            alert("{{ message }}");
+        </script>
+    {% endfor %}
+{% endif %}
+
+<!-- Navbar -->
+<header class="bg-white shadow-md sticky top-0">
+    <nav class="container mx-auto flex items-center justify-between p-4">
+        <a href="{% url 'index' %}" class="text-xl font-semibold text-blue-600">
+            project
+        </a>
+
+        <!-- Mobile Menu Button -->
+        <button id="menu-btn" class="md:hidden text-gray-700 text-2xl">
+            ☰
+        </button>
+
+        <!-- Menu Items -->
+        <ul id="menu" class="hidden md:flex gap-6 text-gray-700 font-medium">
+            <li>
+                <a href="{% url 'index' %}" class="hover:text-blue-600">Home</a>
+            </li>
+
+            {% if user.is_authenticated %}
+                <li>
+                    <a href="{% url 'logout' %}" class="hover:text-red-500">
+                        Logout
+                    </a>
+                </li>
+            {% else %}
+                <li>
+                    <a href="{% url 'register' %}" class="hover:text-blue-600">
+                        Sign up
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'login' %}" class="hover:text-blue-600">
+                        Log in
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+
+    <!-- Mobile Dropdown -->
+    <ul id="mobile-menu" class="md:hidden hidden flex-col bg-white shadow-md p-4 text-gray-700">
+        <li class="py-2"><a href="{% url 'index' %}" class="hover:text-blue-600">Home</a></li>
+
+        {% if user.is_authenticated %}
+            <li class="py-2"><a href="{% url 'logout' %}" class="hover:text-red-500">Logout</a></li>
+        {% else %}
+            <li class="py-2"><a href="{% url 'register' %}" class="hover:text-blue-600">Sign up</a></li>
+            <li class="py-2"><a href="{% url 'login' %}" class="hover:text-blue-600">Log in</a></li>
+        {% endif %}
+    </ul>
+</header>
+
+<!-- Mobile Menu Script -->
+<script>
+    const btn = document.getElementById("menu-btn");
+    const menu = document.getElementById("mobile-menu");
+
+    btn.addEventListener("click", () => {
+        menu.classList.toggle("hidden");
+    });
+</script>
+
+<!-- Page Content -->
+<div class="container flex items-center justify-center mx-auto mt-16 p-6">
+    {% block start %}
+        {% if user.is_authenticated %}
+            <h1 class="text-center text-3xl font-bold text-gray-800">
+                Welcome back {{ user.username }}!
+            </h1>
+        {% else %}
+            <h1 class="text-center text-3xl font-bold text-red-600">
+                Please log in…
+            </h1>
+        {% endif %}
+    {% endblock %}
+</div>
+
+</body>
+</html>
