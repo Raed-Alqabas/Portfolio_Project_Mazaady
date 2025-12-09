@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'portfolio',
     'crispy_forms',
-    'crispy_bootstrap5',
+    'crispy_tailwind',
 ]
 
 MIDDLEWARE = [
@@ -142,4 +142,6 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'ryan-055@outlook.com'
-EMAIL_HOST_PASSWORD = 'wlgsdrnvjqebowxg'  # Use app password if 2FA enabled
+EMAIL_HOST_PASSWORD = 'syqq ompd gevb fdjb'  # Use app password if 2FA enabled
+
+LOGOUT_REDIRECT_URL = 'login'
