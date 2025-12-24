@@ -29,6 +29,16 @@ urlpatterns = [
     path('register/', user_view.register, name ='register'),
 ]
 
+# if settings.DEBUG:
+#     # Include django_browser_reload URLs only in DEBUG mode
+#     urlpatterns += [
+#         path("__reload__/", include("django_browser_reload.urls")),
+#     ]
+
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+     # Include django_browser_reload URLs only in DEBUG mode
+    urlpatterns += [
+        path("__reload__/", include("django_browser_reload.urls")),
+    ]

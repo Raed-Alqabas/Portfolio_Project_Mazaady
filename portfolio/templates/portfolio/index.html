@@ -1,5 +1,6 @@
 {% load static %}
 {% load crispy_forms_tags %}
+{% load static tailwind_tags %}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -7,104 +8,159 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ title }}</title>
+    <!-- {% tailwind_css %} -->
+        <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
-    <!-- TailwindCSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Main CSS -->
-    <link rel="stylesheet" href="{% static 'index.css' %}">
 </head>
 
-<body class="bg-gray-100">
-
-    <!-- Messages -->
-    {% if messages %}
-    {% for message in messages %}
-    <script>
-        alert("{{ message }}");
-    </script>
-    {% endfor %}
-    {% endif %}
+<body class="bg-gray-100 min-h-screen flex flex-col font-sans">
 
     <!-- Navbar -->
-    <header class="bg-white shadow-md sticky top-0">
-        <nav class="container mx-auto flex items-center justify-between p-4">
-            <a href="{% url 'index' %}" class="text-xl font-semibold text-blue-600">
-                project
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <nav class="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+            <a href="{% url 'index' %}" class="text-2xl font-bold text-blue-600">
+                Project
             </a>
 
             <!-- Mobile Menu Button -->
-            <button id="menu-btn" class="md:hidden text-gray-700 text-2xl">
-                ☰
-            </button>
+            <button id="menu-btn" class="md:hidden text-2xl text-gray-700">☰</button>
 
             <!-- Menu Items -->
-            <ul id="menu" class="hidden md:flex gap-6 text-gray-700 font-medium">
-                <li>
-                    <a href="{% url 'index' %}" class="hover:text-blue-600">Home</a>
-                </li>
+            <ul id="menu" class="hidden md:flex items-center gap-6 text-gray-700 font-medium">
+                <li><a href="{% url 'index' %}" class="hover:text-blue-600 transition">Home</a></li>
 
                 {% if user.is_authenticated %}
                 <li>
+                    <form action="" method="post">
+                        <button class="hover:text-blue-600 transition">Profail</button>
+                    </form>
+                </li>
+                <li>
                     <form action="{% url 'logout' %}" method="post">
                         {% csrf_token %}
-                        <button class="text-red-600 hover:underline">Logout</button>
+                        <button class="text-red-600 hover:underline transition">Logout</button>
                     </form>
-
                 </li>
                 {% else %}
-                <li>
-                    <a href="{% url 'register' %}" class="hover:text-blue-600">
-                        Sign up
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'login' %}" class="hover:text-blue-600">
-                        Log in
-                    </a>
-                </li>
+                <li><a href="{% url 'register' %}" class="hover:text-blue-600 transition">Sign up</a></li>
+                <li><a href="{% url 'login' %}" class="hover:text-blue-600 transition">Log in</a></li>
                 {% endif %}
             </ul>
         </nav>
 
-        <!-- Mobile Dropdown -->
-        <ul id="mobile-menu" class="md:hidden hidden flex-col bg-white shadow-md p-4 text-gray-700">
-            <li class="py-2"><a href="{% url 'index' %}" class="hover:text-blue-600">Home</a></li>
-
+        <!-- Mobile Menu -->
+        <ul id="mobile-menu" class="hidden md:hidden bg-white border-t px-6 py-4 space-y-3">
+            <li><a href="{% url 'index' %}" class="block hover:text-blue-600 transition">Home</a></li>
             {% if user.is_authenticated %}
-            <li class="py-2"><a href="{% url 'logout' %}" class="hover:text-red-500">Logout</a></li>
+            <li><a href="{% url 'logout' %}" class="block text-red-600 transition">Logout</a></li>
             {% else %}
-            <li class="py-2"><a href="{% url 'register' %}" class="hover:text-blue-600">Sign up</a></li>
-            <li class="py-2"><a href="{% url 'login' %}" class="hover:text-blue-600">Log in</a></li>
+            <li><a href="{% url 'register' %}" class="block hover:text-blue-600 transition">Sign up</a></li>
+            <li><a href="{% url 'login' %}" class="block hover:text-blue-600 transition">Log in</a></li>
             {% endif %}
         </ul>
     </header>
+
+    <!-- Page Content -->
+    <main class="flex-grow flex flex-col items-center justify-center px-4 py-8">
+             {% block start %}
+        <div class="w-full max-w-md space-y-8">
+
+            <!-- Welcome Message -->
+            {% if user.is_authenticated %}
+            <h1 class="text-center text-2xl font-semibold text-gray-800">
+                Welcome back, {{ user.username }}
+            </h1>
+            {% else %}
+            <h1 class="text-center text-2xl font-semibold text-red-600">
+                Please log in to continue
+            </h1>
+            {% endif %}
+
+            <!-- Auction Card -->
+            <div class="bg-white rounded-2xl shadow-xl p-6 text-center space-y-6 border border-gray-100">
+                
+                <h2 class="text-xl font-bold text-gray-800">
+                    Car Auction
+                </h2>
+
+                <!-- Live Price -->
+                <div class="bg-blue-50 rounded-xl py-4 px-4">
+                    <p class="text-sm text-blue-600">Current Price</p>
+                    <p id="live-price" class="text-4xl font-extrabold text-blue-700 mt-1">
+                        ${{ auction.current_price }}
+                    </p>
+                </div>
+
+                <!-- Countdown -->
+                <div class="bg-gray-50 rounded-xl py-3 px-4">
+                    <p class="text-sm text-gray-500">Auction Ends In</p>
+                    <p id="countdown" class="text-lg font-semibold text-red-500 mt-1">
+                        -- : -- : --
+                    </p>
+                </div>
+
+                {% if user.is_authenticated %}
+                <button
+                    class="w-full bg-blue-600 hover:bg-blue-700 transition-all duration-200 text-white py-3 rounded-2xl font-semibold shadow-md hover:shadow-lg">
+                    Place a Bid
+                </button>
+                {% else %}
+                <p class="text-sm text-red-500 mt-2">
+                    Login to place a bid
+                </p>
+                {% endif %}
+            </div>
+        </div>
+             {% endblock %}
+
+    </main>
+
 
     <!-- Mobile Menu Script -->
     <script>
         const btn = document.getElementById("menu-btn");
         const menu = document.getElementById("mobile-menu");
-
-        btn.addEventListener("click", () => {
-            menu.classList.toggle("hidden");
-        });
+        btn.addEventListener("click", () => menu.classList.toggle("hidden"));
     </script>
 
-    <!-- Page Content -->
-    <div class="container flex items-center justify-center mx-auto mt-16 p-6">
-        {% block start %}
-        {% if user.is_authenticated %}
-        <h1 class="text-center text-3xl font-bold text-gray-800">
-            Welcome back {{ user.username }}!
-        </h1>
-        {% else %}
-        <h1 class="text-center text-3xl font-bold text-red-600">
-            Please log in…
-        </h1>
-        {% endif %}
-        {% endblock %}
-    </div>
+    <!-- Countdown Script (Random time) -->
+    <script>
+        const minMinutes = 5;
+        const maxMinutes = 120;
+        const randomMinutes = Math.floor(Math.random() * (maxMinutes - minMinutes + 1)) + minMinutes;
+        const auctionEndTime = new Date().getTime() + randomMinutes * 60 * 1000;
+        const countdownEl = document.getElementById("countdown");
+
+        const timer = setInterval(() => {
+            const now = new Date().getTime();
+            const distance = auctionEndTime - now;
+
+            if (distance <= 0) {
+                clearInterval(timer);
+                countdownEl.innerText = "Auction Ended";
+                countdownEl.classList.add("text-gray-500");
+                return;
+            }
+
+            const h = Math.floor(distance / (1000 * 60 * 60));
+            const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((distance % (1000 * 60)) / 1000);
+
+            countdownEl.innerText = `${h}h ${m}m ${s}s`;
+        }, 1000);
+    </script>
+
+    <!-- Live Price Script -->
+    <script>
+        function fetchLivePrice() {
+            fetch("{% url 'auction-live-price' %}")
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById("live-price").innerText = `$${data.price}`;
+                });
+        }
+        setInterval(fetchLivePrice, 1000);
+    </script>
 
 </body>
-
 </html>
