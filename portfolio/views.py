@@ -9,6 +9,13 @@ from django.core.mail import send_mail
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import get_template
 from django.template import Context
+from django.http import JsonResponse
+
+from datetime import datetime, timedelta
+import random
+
+
+FAKE_PRICE = 10000
 
 # Create your views here.
 
@@ -18,7 +25,12 @@ def home(request):
 
 #################### index####################################### 
 def index(request):
-    return render(request, 'portfolio/index.html', {'title':'index'})
+    fake_auction = {
+        "title": "Toyota Land Cruiser 2022",
+        "current_price": FAKE_PRICE,
+        "end_time": datetime.now() + timedelta(hours=1)
+    }
+    return render(request, 'portfolio/index.html', {"auction": fake_auction,'title':'index'})
  
 ########### register here ##################################### 
 def register(request):
@@ -31,11 +43,12 @@ def register(request):
             ######################### mail system #################################### 
             htmly = get_template('portfolio/Email.html')
             d = { 'username': username }
-            subject, from_email, to = 'welcome', 'ryan-055@outlook.com', email
+            subject, from_email, to = 'Welcome', 'MazzadyApp', email
             html_content = htmly.render(d)
             msg = EmailMultiAlternatives(subject, html_content, from_email, [to])
             msg.attach_alternative(html_content, "text/html")
             msg.send()
+            # print(msg)
             ################################################################## 
             messages.success(request, f'Your account has been created ! You are now able to log in')
             return redirect('login')
@@ -60,4 +73,19 @@ def Login(request):
             messages.info(request, f'account done not exit plz sign in')
     form = AuthenticationForm()
     return render(request, 'portfolio/login.html', {'form':form, 'title':'log in'})
+
+# def auction_live_price(request, auction_id):
+#     auction = Auction.objects.get(id=auction_id)
+#     return JsonResponse({
+#         "price": auction.current_price
+#     })
+
+def auction_live_price(request):
+    global FAKE_PRICE
+
+    FAKE_PRICE += random.choice([0, 100, 200, 300])
+
+    return JsonResponse({
+        "price": FAKE_PRICE
+    })
 

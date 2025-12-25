@@ -40,6 +40,9 @@ INSTALLED_APPS = [
     'portfolio',
     'crispy_forms',
     'crispy_tailwind',
+    'tailwind',
+    "theme",
+    "django_browser_reload",
 ]
 
 MIDDLEWARE = [
@@ -51,6 +54,12 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+if DEBUG:
+    # Add django_browser_reload middleware only in DEBUG mode
+    MIDDLEWARE += [
+        "django_browser_reload.middleware.BrowserReloadMiddleware",
+    ]
 
 ROOT_URLCONF = 'mazaady_portfolio.urls'
 
@@ -141,7 +150,11 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'ryan-055@outlook.com'
-EMAIL_HOST_PASSWORD = 'syqq ompd gevb fdjb'  # Use app password if 2FA enabled
+EMAIL_HOST_USER = 'ryanhantoul@gmail.com'
+EMAIL_HOST_PASSWORD = 'nbjl anhz czaa qcnb'  # Use app password if 2FA enabled
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
 
 LOGOUT_REDIRECT_URL = 'login'
+
+TAILWIND_APP_NAME = "theme"
