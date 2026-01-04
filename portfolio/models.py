@@ -18,7 +18,7 @@ class Mazaady(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = "mazaady"   # forces EXACT table name in MySQL
+        db_table = "mazaady"   # keep table name stable across databases
 
     def __str__(self):
         return self.title

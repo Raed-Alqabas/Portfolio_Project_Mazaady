@@ -2,7 +2,7 @@ from django.urls import path, include
 from django.conf import settings
 from . import views
 from django.conf.urls.static import static
-from .views import tap_start, tap_return, tap_verify, pay_entry_fee
+from .views import tap_return, tap_verify, pay_entry_fee
 
 urlpatterns = [
     path('', views.index, name ='index'),

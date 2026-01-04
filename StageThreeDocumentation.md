@@ -40,7 +40,7 @@ The platform ensures **trust**, **transparency**, and **a complete digital exper
 ## Design System Architecture
 - Front-end: Tailwind CSS.
 - Back-end: Django.
-- Database: MySQL.
+- Database: SQLite.
 - External APIs: Moyasar for payment gateway.
 
 <img width="1644" height="1795" alt="image" src="https://github.com/user-attachments/assets/55d60872-1d83-4794-8129-f695c305b330" />

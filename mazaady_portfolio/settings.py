@@ -89,12 +89,8 @@ WSGI_APPLICATION = 'mazaady_portfolio.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'mazadi_db',
-        'USER': 'admin',
-        'PASSWORD': 'P1s$Wor4QW',
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
