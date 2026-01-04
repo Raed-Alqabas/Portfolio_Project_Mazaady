@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse
 from django.contrib import messages
 from django.contrib.auth import authenticate, login
@@ -10,10 +10,135 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import get_template
 from django.template import Context
 from django.http import JsonResponse
+import os  
+import requests
+from .models import Mazaady, Payment, AuctionEntry
+from django.utils import timezone
+from decimal import Decimal, ROUND_HALF_UP
+
+
+def pay_entry_fee(request, auction_id):
+    payer_email = request.GET.get("email")
+    if not payer_email:
+        return HttpResponse("Missing email. Example: ?email=test@test.com", status=400)
+
+    auction = get_object_or_404(Mazaady, id=auction_id)
+
+    # 2% refundable entry deposit based on starting price
+    entry_amount = (auction.starting_price * Decimal("0.02")).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
+
+    payment = Payment.objects.create(
+        auction=auction,
+        payer_email=payer_email,
+        purpose="ENTRY_FEE",
+        amount=entry_amount,
+        currency="SAR",
+        status="INITIATED",
+    )
+
+    tap_url = "https://api.tap.company/v2/charges/"
+
+    headers = {
+        "accept": "application/json",
+        "content-type": "application/json",
+        "Authorization": f"Bearer {os.getenv('TAP_SECRET_KEY')}",
+    }
+
+    base = "http://127.0.0.1:8000"
+
+    payload = {
+        "amount": float(payment.amount),
+        "currency": payment.currency,
+        "customer": {
+            "first_name": "Mazady",
+            "last_name": "Bidder",
+            "email": payer_email,
+            "phone": {"country_code": 966, "number": 500000000},
+        },
+        "source": {"id": "src_all"},
+        "redirect": {"url": f"{base}/tap/return/?pid={payment.public_id}"},
+        "post": {"url": f"{base}/tap/webhook/"},
+        "reference": {"order": str(payment.public_id)},
+    }
+
+    r = requests.post(tap_url, json=payload, headers=headers)
+    data = r.json()
+
+    tap_charge_id = data.get("id")
+    payment_url = data.get("transaction", {}).get("url")
+
+    if not tap_charge_id or not payment_url:
+        payment.status = "FAILED"
+        payment.save(update_fields=["status"])
+        return HttpResponse(f"Tap error: {data}", status=400)
+
+    payment.tap_charge_id = tap_charge_id
+    payment.save(update_fields=["tap_charge_id"])
+
+    return redirect(payment_url)
 
 from datetime import datetime, timedelta
 import random
 
+def tap_return(request):
+    pid = request.GET.get("pid")
+    if not pid:
+        return HttpResponse("Missing pid", status=400)
+
+    payment = get_object_or_404(Payment, public_id=pid)
+
+    url = f"https://api.tap.company/v2/charges/{payment.tap_charge_id}"
+    headers = {
+        "accept": "application/json",
+        "Authorization": f"Bearer {os.getenv('TAP_SECRET_KEY')}",
+    }
+
+    r = requests.get(url, headers=headers)
+    data = r.json()
+
+    status = data.get("status") or "UNKNOWN"
+
+    if status == "CAPTURED":
+        payment.status = "CAPTURED"
+        payment.save(update_fields=["status"])
+
+        entry, _ = AuctionEntry.objects.get_or_create(
+            auction=payment.auction,
+            payer_email=payment.payer_email,
+        )
+        entry.is_paid = True
+        entry.paid_at = timezone.now()
+        entry.save(update_fields=["is_paid", "paid_at"])
+
+        return HttpResponse("✅ Entry deposit paid. You can now enter this auction.")
+    else:
+        payment.status = "FAILED"
+        payment.save(update_fields=["status"])
+        return HttpResponse(f"❌ Payment not completed. Status: {status}")  
+
+def tap_verify(request):
+    charge_id = request.GET.get("charge_id")
+
+    if not charge_id:
+        return HttpResponse(
+            "Missing charge_id. Example: /tap/verify/?charge_id=chg_xxx",
+            status=400
+        )
+
+    url = f"https://api.tap.company/v2/charges/{charge_id}"
+
+    headers = {
+        "accept": "application/json",
+        "Authorization": f"Bearer {os.getenv('TAP_SECRET_KEY')}",
+    }
+
+    r = requests.get(url, headers=headers)
+    data = r.json()
+
+    status = data.get("status")
+    return HttpResponse(f"Charge status: <b>{status}</b><br><br>Full response:<br>{data}")
 
 FAKE_PRICE = 10000
 

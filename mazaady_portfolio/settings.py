@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -88,9 +90,9 @@ WSGI_APPLICATION = 'mazaady_portfolio.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'mazzady',
+        'NAME': 'mazadi_db',
         'USER': 'admin',
-        'PASSWORD': 'StrongPassword123',
+        'PASSWORD': 'P1s$Wor4QW',
         'HOST': 'localhost',
         'PORT': '3306',
     }
@@ -158,3 +160,7 @@ EMAIL_USE_SSL = False
 LOGOUT_REDIRECT_URL = 'login'
 
 TAILWIND_APP_NAME = "theme"
+
+
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = False
