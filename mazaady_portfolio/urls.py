@@ -20,13 +20,15 @@ from django.conf import settings
 from django.conf.urls.static import static
 from portfolio import views as user_view
 from django.contrib.auth import views as auth
+from django.views.generic import TemplateView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('portfolio.urls')),
+    path('', TemplateView.as_view(template_name='index.html')),
     path('login/', user_view.Login, name ='login'),
     path('logout/', auth.LogoutView.as_view(template_name ='portfolio/index.html'), name ='logout'),
     path('register/', user_view.register, name ='register'),
+    path("api/", include("portfolio.urls")),
 ]
 
 # if settings.DEBUG:
