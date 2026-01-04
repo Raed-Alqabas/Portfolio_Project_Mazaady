@@ -10,6 +10,8 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import get_template
 from django.template import Context
 from django.http import JsonResponse
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
 from datetime import datetime, timedelta
 import random
@@ -23,7 +25,11 @@ def home(request):
     """Home page view"""
     return HttpResponse("Welcome to Mazaady Portfolio Project!")
 
-#################### index####################################### 
+@api_view(["GET"])
+def test_api(request):
+    return Response({"status": "Django API working"})
+
+#################### index#######################################
 def index(request):
     fake_auction = {
         "title": "Toyota Land Cruiser 2022",
@@ -32,7 +38,8 @@ def index(request):
     }
     return render(request, 'portfolio/index.html', {"auction": fake_auction,'title':'index'})
  
-########### register here ##################################### 
+########### register here #####################################
+@api_view(["POST"])
 def register(request):
     if request.method == 'POST':
         form = UserRegisterForm(request.POST)
@@ -56,7 +63,8 @@ def register(request):
         form = UserRegisterForm()
     return render(request, 'portfolio/register.html', {'form': form, 'title':'register here'})
  
-################ login forms################################################### 
+################ login forms###################################################
+@api_view(["POST"])
 def Login(request):
     if request.method == 'POST':
  

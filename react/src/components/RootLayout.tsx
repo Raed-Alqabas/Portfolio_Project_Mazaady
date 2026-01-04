@@ -1,0 +1,354 @@
+import { Outlet, Link, useLocation } from "react-router";
+import { Gavel, Car, Home, LogIn, User, LogOut, ClipboardList, Megaphone, Heart, Search, ShoppingCart, Bell, LayoutDashboard } from "lucide-react";
+import { Button } from "./ui/button";
+import { AuthDialog } from "./AuthDialog";
+import { useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "./ui/avatar";
+import { toast } from "sonner";
+import { Toaster } from "./ui/sonner";
+// import logoImage from "figma:asset/5b88b3247f307b659a2fba734515e1ecb70e5897.png";
+
+export function RootLayout() {
+  const location = useLocation();
+  const [authOpen, setAuthOpen] = useState(false);
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const isActive = (path: string) => {
+    if (path === "/" && location.pathname === "/") return true;
+    if (path !== "/" && location.pathname.startsWith(path)) return true;
+    return false;
+  };
+
+  const handleLogin = (userData: { name: string; email: string }) => {
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    toast.success("تم تسجيل الخروج بنجاح");
+  };
+
+  return (
+    <div className="min-h-screen bg-background" dir="rtl">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div className="container mx-auto px-4">
+          {/* Top Bar - Single Row */}
+          <div className="flex items-center justify-between gap-6 h-20">
+            {/* Logo */}
+            <Link to="/" className="flex-shrink-0 group">
+              <div className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent transition-transform duration-300 group-hover:scale-105">
+                مزادي
+              </div>
+            </Link>
+
+            {/* Search Bar - Center */}
+            <div className="flex-1 max-w-2xl">
+              <div className="relative">
+                <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="ابحث عن سيارة، موديل، أو ماركة..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-12 pr-12 pl-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Right Icons & Auth */}
+            <div className="flex items-center gap-3 flex-shrink-0">
+              {/* Favorites Icon */}
+              <Link to="/favorites">
+                <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group">
+                  <Heart className="w-6 h-6 text-gray-600 group-hover:text-accent transition-colors" />
+                  <span className="absolute -top-1 -left-1 w-5 h-5 bg-accent text-white text-xs rounded-full flex items-center justify-center">
+                    3
+                  </span>
+                </button>
+              </Link>
+
+              {/* My Bids Icon */}
+              <Link to="/my-bids">
+                <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group">
+                  <Gavel className="w-6 h-6 text-gray-600 group-hover:text-accent transition-colors" />
+                  <span className="absolute -top-1 -left-1 w-5 h-5 bg-accent text-white text-xs rounded-full flex items-center justify-center">
+                    2
+                  </span>
+                </button>
+              </Link>
+
+              {/* Notifications Icon */}
+              <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group">
+                <Bell className="w-6 h-6 text-gray-600 group-hover:text-accent transition-colors" />
+                <span className="absolute -top-1 -left-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                  5
+                </span>
+              </button>
+
+              {/* Divider */}
+              <div className="h-8 w-px bg-gray-200"></div>
+
+              {/* User Section */}
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="gap-2 h-12 px-4 hover:bg-gray-100 rounded-xl">
+                      <Avatar className="w-8 h-8 border-2 border-gray-200">
+                        <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white">
+                          {user.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm text-gray-700">{user.name}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>حسابي</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/dashboard" className="flex items-center">
+                        <LayoutDashboard className="ml-2 w-4 h-4" />
+                        لوحة التحكم
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/profile" className="flex items-center">
+                        <User className="ml-2 w-4 h-4" />
+                        الملف الشخصي
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/my-bids" className="flex items-center">
+                        <Gavel className="ml-2 w-4 h-4" />
+                        مزايداتي
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/my-ads" className="flex items-center">
+                        <Megaphone className="ml-2 w-4 h-4" />
+                        إعلاناتي
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/favorites" className="flex items-center">
+                        <Heart className="ml-2 w-4 h-4" />
+                        المفضلة
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                      <LogOut className="ml-2 w-4 h-4" />
+                      تسجيل الخروج
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button
+                  onClick={() => setAuthOpen(true)}
+                  className="gap-2 h-12 px-6 bg-primary hover:bg-primary/90 text-white rounded-xl shadow-sm"
+                >
+                  <LogIn className="w-4 h-4" />
+                  تسجيل الدخول
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation Bar - Second Row */}
+        <div className="border-t border-gray-100 bg-gray-50/50">
+          <div className="container mx-auto px-4">
+            <nav className="flex items-center justify-center gap-1 h-14">
+              <Link to="/">
+                <Button
+                  variant={isActive("/") && !isActive("/my-") && !isActive("/profile") && !isActive("/favorites") ? "default" : "ghost"}
+                  className={
+                    isActive("/") && !isActive("/my-") && !isActive("/profile") && !isActive("/favorites")
+                      ? "gap-2 bg-primary text-white hover:bg-primary/90 rounded-xl"
+                      : "gap-2 text-gray-700 hover:bg-white hover:text-primary rounded-xl"
+                  }
+                >
+                  <Home className="w-4 h-4" />
+                  الرئيسية
+                </Button>
+              </Link>
+              <Link to="/auctions">
+                <Button
+                  variant={isActive("/auctions") ? "default" : "ghost"}
+                  className={
+                    isActive("/auctions")
+                      ? "gap-2 bg-primary text-white hover:bg-primary/90 rounded-xl"
+                      : "gap-2 text-gray-700 hover:bg-white hover:text-primary rounded-xl"
+                  }
+                >
+                  <Gavel className="w-4 h-4" />
+                  المزايدات
+                </Button>
+              </Link>
+              <Link to="/cars">
+                <Button
+                  variant={isActive("/cars") ? "default" : "ghost"}
+                  className={
+                    isActive("/cars")
+                      ? "gap-2 bg-primary text-white hover:bg-primary/90 rounded-xl"
+                      : "gap-2 text-gray-700 hover:bg-white hover:text-primary rounded-xl"
+                  }
+                >
+                  <Car className="w-4 h-4" />
+                  السيارات
+                </Button>
+              </Link>
+            </nav>
+          </div>
+        </div>
+      </header>
+
+      {/* Auth Dialog */}
+      <AuthDialog open={authOpen} onOpenChange={setAuthOpen} onLogin={handleLogin} />
+      <Toaster />
+
+      {/* Main Content */}
+      <main>
+        <Outlet />
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white mt-20">
+        <div className="container mx-auto px-4 py-12">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            {/* About */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  مزادي
+                </div>
+              </div>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                منصة مزادي الأولى في المملكة لمزايدات السيارات. نوفر بيئة آمنة وشفافة لشراء وبيع السيارات.
+              </p>
+            </div>
+
+            {/* Quick Links */}
+            <div>
+              <h4 className="mb-4 text-white">روابط سريعة</h4>
+              <ul className="space-y-2">
+                <li>
+                  <Link to="/auctions" className="text-gray-400 hover:text-white transition-colors text-sm">
+                    المزادات النشطة
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/cars" className="text-gray-400 hover:text-white transition-colors text-sm">
+                    السيارات المتاحة
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/favorites" className="text-gray-400 hover:text-white transition-colors text-sm">
+                    المفضلة
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/my-bids" className="text-gray-400 hover:text-white transition-colors text-sm">
+                    مزايداتي
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Support */}
+            <div>
+              <h4 className="mb-4 text-white">الدعم والمساعدة</h4>
+              <ul className="space-y-2">
+                <li>
+                  <a href="#" className="text-gray-400 hover:text-white transition-colors text-sm">
+                    مركز المساعدة
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-gray-400 hover:text-white transition-colors text-sm">
+                    الشروط والأحكام
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-gray-400 hover:text-white transition-colors text-sm">
+                    سياسة الخصوصية
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-gray-400 hover:text-white transition-colors text-sm">
+                    اتصل بنا
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Contact */}
+            <div>
+              <h4 className="mb-4 text-white">تواصل معنا</h4>
+              <ul className="space-y-3">
+                <li className="flex items-start gap-2 text-sm">
+                  <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  <a href="mailto:info@mazady.sa" className="text-gray-400 hover:text-white transition-colors">
+                    info@mazady.sa
+                  </a>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                  <a href="tel:+966920001234" className="text-gray-400 hover:text-white transition-colors" dir="ltr">
+                    920001234 966+
+                  </a>
+                </li>
+                <li className="flex items-start gap-2 text-sm">
+                  <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-gray-400">
+                    الأحد - الخميس<br />9 ص - 5 م
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-800 pt-8">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <p className="text-gray-400 text-sm">
+                © 2025 منصة مزادي. جميع الحقوق محفوظة
+              </p>
+              <div className="flex items-center gap-4">
+                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                  </svg>
+                </a>
+                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z" />
+                  </svg>
+                </a>
+                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 0C8.74 0 8.333.015 7.053.072 5.775.132 4.905.333 4.14.63c-.789.306-1.459.717-2.126 1.384S.935 3.35.63 4.14C.333 4.905.131 5.775.072 7.053.012 8.333 0 8.74 0 12s.015 3.667.072 4.947c.06 1.277.261 2.148.558 2.913.306.788.717 1.459 1.384 2.126.667.666 1.336 1.079 2.126 1.384.766.296 1.636.499 2.913.558C8.333 23.988 8.74 24 12 24s3.667-.015 4.947-.072c1.277-.06 2.148-.262 2.913-.558.788-.306 1.459-.718 2.126-1.384.666-.667 1.079-1.335 1.384-2.126.296-.765.499-1.636.558-2.913.06-1.28.072-1.687.072-4.947s-.015-3.667-.072-4.947c-.06-1.277-.262-2.149-.558-2.913-.306-.789-.718-1.459-1.384-2.126C21.319 1.347 20.651.935 19.86.63c-.765-.297-1.636-.499-2.913-.558C15.667.012 15.26 0 12 0zm0 2.16c3.203 0 3.585.016 4.85.071 1.17.055 1.805.249 2.227.415.562.217.96.477 1.382.896.419.42.679.819.896 1.381.164.422.36 1.057.413 2.227.057 1.266.07 1.646.07 4.85s-.015 3.585-.074 4.85c-.061 1.17-.256 1.805-.421 2.227-.224.562-.479.96-.899 1.382-.419.419-.824.679-1.38.896-.42.164-1.065.36-2.235.413-1.274.057-1.649.07-4.859.07-3.211 0-3.586-.015-4.859-.074-1.171-.061-1.816-.256-2.236-.421-.569-.224-.96-.479-1.379-.899-.421-.419-.69-.824-.9-1.38-.165-.42-.359-1.065-.42-2.235-.045-1.26-.061-1.649-.061-4.844 0-3.196.016-3.586.061-4.861.061-1.17.255-1.814.42-2.234.21-.57.479-.96.9-1.381.419-.419.81-.689 1.379-.898.42-.166 1.051-.361 2.221-.421 1.275-.045 1.65-.06 4.859-.06l.045.03zm0 3.678c-3.405 0-6.162 2.76-6.162 6.162 0 3.405 2.76 6.162 6.162 6.162 3.405 0 6.162-2.76 6.162-6.162 0-3.405-2.76-6.162-6.162-6.162zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm7.846-10.405c0 .795-.646 1.44-1.44 1.44-.795 0-1.44-.646-1.44-1.44 0-.794.646-1.439 1.44-1.439.793-.001 1.44.645 1.44 1.439z" />
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
