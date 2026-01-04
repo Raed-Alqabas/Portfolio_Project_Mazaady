@@ -7,6 +7,7 @@ import { Separator } from "./ui/separator";
 import { login, register } from "../api/auth";
 import { LogIn, UserPlus, Mail, Lock, User, Phone } from "lucide-react";
 import { toast } from "sonner";
+import Swal from "sweetalert2";
 
 interface AuthDialogProps {
   open: boolean;
@@ -45,7 +46,13 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
       if (mode === "login") {
         // Login Validation
         if (!formData.email || !formData.password) {
-          toast.error("يرجى إدخال البريد الإلكتروني وكلمة المرور");
+          // Swal.fire({
+          //   position: "center",
+          //   icon: "error",
+          //   title: "البيانات المدخله غير صحيحة!",
+          //   showConfirmButton: false,
+          //   timer: 1500
+          // });
           setIsLoading(false);
           return;
         }
@@ -60,7 +67,13 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
           email: response.user.email,
         });
 
-        toast.success("تم تسجيل الدخول بنجاح!");
+        Swal.fire({
+          position: "top",
+          icon: "success",
+          title: "تم إنشاء الحساب بنجاح حياك " + response.user.username,
+          showConfirmButton: false,
+          timer: 1500
+        });
         onOpenChange(false);
         resetForm();
       } else {
@@ -106,7 +119,13 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
           email: response.user.email,
         });
 
-        toast.success("تم إنشاء الحساب بنجاح! مرحباً بك " + response.user.username);
+        Swal.fire({
+          position: "top",
+          icon: "success",
+          title: "تم إنشاء الحساب بنجاح! مرحباً بك " + response.user.username,
+          showConfirmButton: false,
+          timer: 1500
+        });
         onOpenChange(false);
         resetForm();
       }
@@ -114,6 +133,7 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
       console.error("Auth error:", error);
 
       let msg = "حدث خطأ ما";
+      let useSwal = false;
 
       if (error.code === "ERR_NETWORK" || error.message === "Network Error") {
         msg = "لا يمكن الاتصال بالخادم. تأكد من تشغيل Django على المنفذ 8000";
@@ -123,13 +143,25 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
         msg = "هذا البريد الإلكتروني مستخدم بالفعل";
       } else if (error.response?.data?.error) {
         msg = error.response.data.error;
+        if (mode === "login") useSwal = true;
       } else if (error.response?.data?.detail) {
         msg = error.response.data.detail;
+        if (mode === "login") useSwal = true;
       } else if (error.request) {
         msg = "لم يتم استلام رد من الخادم";
       }
 
-      toast.error(msg);
+      if (mode === "login" && useSwal) {
+        Swal.fire({
+          position: "top",
+          icon: "error",
+          title: "البيانات المدخله غير صحيحة!",
+          showConfirmButton: false,
+          timer: 1500
+        });
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -152,8 +184,8 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md" dir="rtl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+        <DialogHeader className="text-center">
+          <DialogTitle className="flex items-center justify-center gap-2">
             {mode === "login" ? (
               <>
                 <LogIn className="w-5 h-5" />
@@ -166,7 +198,7 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
               </>
             )}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-center">
             {mode === "login"
               ? "أدخل بياناتك للوصول إلى حسابك"
               : "املأ البيانات التالية لإنشاء حساب جديد"}
@@ -183,6 +215,7 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
                   id="name"
                   type="text"
                   placeholder="أدخل اسمك الكامل"
+                  required
                   value={formData.name}
                   onChange={(e) => handleChange("name", e.target.value)}
                   className="pr-10"
@@ -199,6 +232,7 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
                 id="email"
                 type="email"
                 placeholder="example@email.com"
+                required
                 value={formData.email}
                 onChange={(e) => handleChange("email", e.target.value)}
                 className="pr-10"
@@ -215,6 +249,7 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
                   id="phone"
                   type="tel"
                   placeholder="05xxxxxxxx"
+                  required
                   value={formData.phone}
                   onChange={(e) => handleChange("phone", e.target.value)}
                   className="pr-10"
@@ -231,6 +266,7 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
                 id="password"
                 type="password"
                 placeholder="••••••••"
+                required
                 value={formData.password}
                 onChange={(e) => handleChange("password", e.target.value)}
                 className="pr-10"
@@ -247,6 +283,7 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
                   id="confirmPassword"
                   type="password"
                   placeholder="••••••••"
+                  required
                   value={formData.confirmPassword}
                   onChange={(e) => handleChange("confirmPassword", e.target.value)}
                   className="pr-10"
