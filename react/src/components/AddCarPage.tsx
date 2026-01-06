@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { 
-  Car, 
-  Upload, 
-  X, 
-  FileText, 
+import api from "../api/axios";
+import {
+  Car,
+  Upload,
+  X,
+  FileText,
   Image as ImageIcon,
   Calendar,
   Gauge,
@@ -26,39 +27,41 @@ import { toast } from "sonner";
 export function AddCarPage() {
   const navigate = useNavigate();
   const [images, setImages] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [inspectionReport, setInspectionReport] = useState<File | null>(null);
-  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [formData, setFormData] = useState({
     // Basic Info
     brand: "",
     model: "",
     year: "",
     color: "",
-    
+
     // Technical Details
     mileage: "",
     fuel: "",
     transmission: "",
     engineSize: "",
     cylinders: "",
-    
+
     // Condition
     condition: "",
     accidents: "",
-    
+
     // Location & Documents
     location: "",
     vin: "",
-    
+
     // Description
     title: "",
     description: "",
-    
+
     // Auction Details
     startBid: "",
     reservePrice: "",
     auctionDuration: "3",
-    
+
     // Additional Features
     features: [] as string[],
   });
@@ -70,17 +73,24 @@ export function AddCarPage() {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      // Simulate image upload - in real app, you'd upload to server
-      const newImages = Array.from(files).slice(0, 10 - images.length).map((file) => {
-        return URL.createObjectURL(file);
-      });
-      setImages(prev => [...prev, ...newImages]);
-      toast.success(`تم إضافة ${newImages.length} صورة`);
+      const remainingSlots = 20 - images.length;
+      const fileList = Array.from(files).slice(0, remainingSlots);
+
+      if (fileList.length === 0 && Array.from(files).length > 0) {
+        toast.error("لقد وصلت للحد الأقصى من الصور (20)");
+        return;
+      }
+
+      const newImageUrls = fileList.map((file) => URL.createObjectURL(file));
+      setImages(prev => [...prev, ...newImageUrls]);
+      setImageFiles(prev => [...prev, ...fileList]);
+      toast.success(`تم إضافة ${fileList.length} صورة`);
     }
   };
 
   const removeImage = (index: number) => {
     setImages(prev => prev.filter((_, i) => i !== index));
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleReportUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,32 +101,74 @@ export function AddCarPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validation
     if (!formData.brand || !formData.model || !formData.year) {
       toast.error("يرجى ملء جميع الحقول الأساسية");
       return;
     }
-    
-    if (images.length === 0) {
-      toast.error("يرجى إضافة صورة واحدة على الأقل");
+
+    if (imageFiles.length < 10) {
+      toast.error("يرجى إضافة 10 صور على الأقل (بحد أقصى 20)");
       return;
     }
-    
+
     if (!formData.startBid) {
       toast.error("يرجى تحديد سعر البداية");
       return;
     }
 
-    // Simulate form submission
-    toast.success("تم إضافة الإعلان بنجاح! سيتم مراجعته قريباً");
-    navigate("/my-ads");
+    setIsSubmitting(true);
+    const data = new FormData();
+
+    // Append form data
+    Object.entries(formData).forEach(([key, value]) => {
+      if (key === 'features') {
+        data.append(key, JSON.stringify(value));
+      } else {
+        // cast to string to avoid lint error
+        data.append(key, value as string);
+      }
+    });
+
+    // Special handling for decimal/int fields if needed, but strings are usually fine for DRF MultiPart
+    // Convert snake_case names if necessary for backend
+    data.set('start_bid', formData.startBid);
+    data.set('reserve_price', formData.reservePrice);
+    data.set('engine_size', formData.engineSize);
+    data.set('auction_duration', formData.auctionDuration);
+
+    // Append images
+    imageFiles.forEach((file) => {
+      data.append('images', file);
+    });
+
+    // Append inspection report
+    if (inspectionReport) {
+      data.append('inspection_report', inspectionReport);
+    }
+
+    try {
+      await api.post("/cars/add/", data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      toast.success("تم إضافة الإعلان بنجاح! سيتم مراجعته قريباً");
+      navigate("/my-ads");
+    } catch (error: any) {
+      console.error("Error adding car:", error);
+      toast.error(error.response?.data?.error || "حدث خطأ أثناء إضافة الإعلان");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const carBrands = [
-    "تويوتا", "مرسيدس", "BMW", "هوندا", "لكزس", "جيب", 
+    "تويوتا", "مرسيدس", "BMW", "هوندا", "لكزس", "جيب",
     "نيسان", "هيونداي", "كيا", "شفروليه", "فورد", "مازدا"
   ];
 
@@ -137,7 +189,7 @@ export function AddCarPage() {
             <ArrowRight className="w-4 h-4" />
             العودة إلى إعلاناتي
           </Button>
-          <h1 className="mb-2">إضافة إعلان جديد</h1>
+          <h1 className="mb-2 font-bold text-2xl">إضافة إعلان جديد</h1>
           <p className="text-gray-600">أضف سيارتك للمزاد العلني</p>
         </div>
 
@@ -146,31 +198,31 @@ export function AddCarPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <ImageIcon className="w-5 h-5" />
+                <ImageIcon className="w-5 h-5 text-primary" />
                 صور السيارة
               </CardTitle>
               <CardDescription>
-                أضف صور واضحة للسيارة (حد أقصى 10 صور)
+                أضف صور واضحة للسيارة (10-20 صورة)
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {images.map((img, index) => (
-                    <div key={index} className="relative aspect-video rounded-lg overflow-hidden border">
-                      <img src={img} alt={`صورة ${index + 1}`} className="w-full h-full object-cover" />
+                    <div key={index} className="relative aspect-video rounded-lg overflow-hidden border group">
+                      <img src={img} alt={`صورة ${index + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                       <button
                         type="button"
                         onClick={() => removeImage(index)}
-                        className="absolute top-2 left-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        className="absolute top-2 left-2 bg-red-500/80 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors shadow-sm"
                       >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
                   ))}
-                  
-                  {images.length < 10 && (
-                    <label className="aspect-video border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+
+                  {images.length < 20 && (
+                    <label className="aspect-video border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all">
                       <Upload className="w-8 h-8 text-gray-400 mb-2" />
                       <span className="text-sm text-gray-600">إضافة صورة</span>
                       <input
@@ -183,9 +235,11 @@ export function AddCarPage() {
                     </label>
                   )}
                 </div>
-                <p className="text-sm text-gray-600">
-                  {images.length} / 10 صور
-                </p>
+                <div className="flex justify-between items-center text-sm">
+                  <span className={`${images.length < 10 ? 'text-orange-500' : 'text-green-600'}`}>
+                    {images.length} / 20 صور (الحد الأدنى 10)
+                  </span>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -194,7 +248,7 @@ export function AddCarPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Car className="w-5 h-5" />
+                <Car className="w-5 h-5 text-primary" />
                 المعلومات الأساسية
               </CardTitle>
             </CardHeader>
@@ -210,10 +264,10 @@ export function AddCarPage() {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="brand">الماركة *</Label>
-                  <Select value={formData.brand} onValueChange={(value) => handleInputChange("brand", value)}>
+                  <Select value={formData.brand} onValueChange={(value: string) => handleInputChange("brand", value)}>
                     <SelectTrigger id="brand">
                       <SelectValue placeholder="اختر الماركة" />
                     </SelectTrigger>
@@ -261,7 +315,7 @@ export function AddCarPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="location">الموقع *</Label>
-                  <Select value={formData.location} onValueChange={(value) => handleInputChange("location", value)}>
+                  <Select value={formData.location} onValueChange={(value: string) => handleInputChange("location", value)}>
                     <SelectTrigger id="location">
                       <SelectValue placeholder="اختر المدينة" />
                     </SelectTrigger>
@@ -291,7 +345,7 @@ export function AddCarPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Gauge className="w-5 h-5" />
+                <Gauge className="w-5 h-5 text-primary" />
                 المواصفات الفنية
               </CardTitle>
             </CardHeader>
@@ -311,7 +365,7 @@ export function AddCarPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="fuel">نوع الوقود *</Label>
-                  <Select value={formData.fuel} onValueChange={(value) => handleInputChange("fuel", value)}>
+                  <Select value={formData.fuel} onValueChange={(value: string) => handleInputChange("fuel", value)}>
                     <SelectTrigger id="fuel">
                       <SelectValue placeholder="اختر نوع الوقود" />
                     </SelectTrigger>
@@ -325,7 +379,7 @@ export function AddCarPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="transmission">ناقل الحركة *</Label>
-                  <Select value={formData.transmission} onValueChange={(value) => handleInputChange("transmission", value)}>
+                  <Select value={formData.transmission} onValueChange={(value: string) => handleInputChange("transmission", value)}>
                     <SelectTrigger id="transmission">
                       <SelectValue placeholder="اختر ناقل الحركة" />
                     </SelectTrigger>
@@ -362,7 +416,7 @@ export function AddCarPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="condition">الحالة العامة *</Label>
-                  <Select value={formData.condition} onValueChange={(value) => handleInputChange("condition", value)}>
+                  <Select value={formData.condition} onValueChange={(value: string) => handleInputChange("condition", value)}>
                     <SelectTrigger id="condition">
                       <SelectValue placeholder="اختر الحالة" />
                     </SelectTrigger>
@@ -386,7 +440,7 @@ export function AddCarPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="accidents">هل تعرضت لحوادث؟ *</Label>
-                  <Select value={formData.accidents} onValueChange={(value) => handleInputChange("accidents", value)}>
+                  <Select value={formData.accidents} onValueChange={(value: string) => handleInputChange("accidents", value)}>
                     <SelectTrigger id="accidents">
                       <SelectValue placeholder="اختر" />
                     </SelectTrigger>
@@ -405,7 +459,7 @@ export function AddCarPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
+                <FileText className="w-5 h-5 text-primary" />
                 تقرير الفحص
               </CardTitle>
               <CardDescription>
@@ -418,7 +472,7 @@ export function AddCarPage() {
                   <div className="flex items-center gap-3">
                     <FileText className="w-8 h-8 text-green-600" />
                     <div>
-                      <p className="text-green-900">{inspectionReport.name}</p>
+                      <p className="text-green-900 font-medium">{inspectionReport.name}</p>
                       <p className="text-sm text-green-600">
                         {(inspectionReport.size / 1024).toFixed(2)} KB
                       </p>
@@ -429,15 +483,15 @@ export function AddCarPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setInspectionReport(null)}
-                    className="text-red-600 hover:text-red-700"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
               ) : (
-                <label className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+                <label className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all">
                   <Upload className="w-12 h-12 text-gray-400 mb-3" />
-                  <p className="text-gray-700 mb-1">اضغط لإرفاق تقرير الفحص</p>
+                  <p className="text-gray-700 font-medium mb-1">اضغط لإرفاق تقرير الفحص</p>
                   <p className="text-sm text-gray-500">PDF, DOC, DOCX (حد أقصى 10MB)</p>
                   <input
                     type="file"
@@ -454,7 +508,7 @@ export function AddCarPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5" />
+                <DollarSign className="w-5 h-5 text-primary" />
                 تفاصيل المزاد
               </CardTitle>
             </CardHeader>
@@ -488,7 +542,7 @@ export function AddCarPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="auctionDuration">مدة المزاد *</Label>
-                  <Select value={formData.auctionDuration} onValueChange={(value) => handleInputChange("auctionDuration", value)}>
+                  <Select value={formData.auctionDuration} onValueChange={(value: string) => handleInputChange("auctionDuration", value)}>
                     <SelectTrigger id="auctionDuration">
                       <SelectValue />
                     </SelectTrigger>
@@ -502,16 +556,16 @@ export function AddCarPage() {
                 </div>
               </div>
 
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <p className="text-sm text-blue-900 mb-2">رسوم النشر:</p>
-                <div className="space-y-1 text-sm text-blue-700">
+              <div className="bg-primary/5 p-4 rounded-lg border border-primary/10">
+                <p className="text-sm font-semibold text-primary mb-2">رسوم النشر:</p>
+                <div className="space-y-1 text-sm text-gray-700">
                   <div className="flex justify-between">
                     <span>رسوم الإعلان</span>
-                    <span>500 ريال</span>
+                    <span className="font-medium">500 ريال</span>
                   </div>
                   <div className="flex justify-between">
                     <span>عمولة المنصة عند البيع</span>
-                    <span>2.5%</span>
+                    <span className="font-medium">2.5%</span>
                   </div>
                 </div>
               </div>
@@ -519,22 +573,34 @@ export function AddCarPage() {
           </Card>
 
           {/* Submit Buttons */}
-          <Card>
+          <Card className="border-primary/20 shadow-lg">
             <CardContent className="p-6">
               <div className="flex gap-3">
-                <Button type="submit" className="flex-1 gap-2">
-                  <CheckCircle className="w-5 h-5" />
-                  نشر الإعلان
+                <Button
+                  type="submit"
+                  className="flex-1 gap-2 text-lg h-12"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-5 h-5" />
+                      نشر الإعلان
+                    </>
+                  )}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => navigate("/my-ads")}
+                  className="h-12 px-8"
+                  disabled={isSubmitting}
                 >
                   إلغاء
                 </Button>
               </div>
-              <p className="text-sm text-gray-600 text-center mt-4">
+              <p className="text-sm text-gray-500 text-center mt-4">
                 سيتم مراجعة الإعلان والموافقة عليه خلال 24 ساعة
               </p>
             </CardContent>

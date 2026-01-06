@@ -5,37 +5,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/
 import { Badge } from "./ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Input } from "./ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
 import { HeroSection } from "./HeroSection";
 import logoImage from "../assets/main-logo.png";
+import api from "../api/axios";
+
 
 export function HomePage() {
-  const featuredAuctions = [
-    {
-      id: 1,
-      title: "تويوتا كامري 2023",
-      currentBid: 85000,
-      endTime: "3 ساعات",
-      image: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=500",
-      bids: 24,
-    },
-    {
-      id: 2,
-      title: "مرسيدس E-Class 2022",
-      currentBid: 180000,
-      endTime: "5 ساعات",
-      image: "https://images.unsplash.com/photo-1617531653332-bd46c24f2068?w=500",
-      bids: 31,
-    },
-    {
-      id: 3,
-      title: "هوندا أكورد 2024",
-      currentBid: 95000,
-      endTime: "2 ساعات",
-      image: "https://images.unsplash.com/photo-1619405399517-d7fce0f13302?w=500",
-      bids: 18,
-    },
-  ];
+  const [activeCars, setActiveCars] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [carType, setCarType] = useState("all");
+  const [region, setRegion] = useState("all");
+
+  useEffect(() => {
+    fetchActiveCars();
+  }, []);
+
+  const fetchActiveCars = async () => {
+    try {
+      const response = await api.get("/cars/public/");
+      setActiveCars(response.data);
+    } catch (error) {
+      console.error("Error fetching active cars:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const features = [
     {
@@ -60,9 +57,6 @@ export function HomePage() {
     },
   ];
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [carType, setCarType] = useState("all");
-  const [region, setRegion] = useState("all");
 
   return (
     <div>
@@ -144,62 +138,77 @@ export function HomePage() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
-            {featuredAuctions.map((auction) => (
-              <Link to={`/auction/${auction.id}`} key={auction.id} className="block group">
-                <div className="overflow-hidden rounded-lg">
-                  {/* Image Container */}
-                  <div className="relative aspect-video overflow-hidden rounded-t-lg bg-gray-200">
-                    <img
-                      src={auction.image}
-                      alt={auction.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
+            {isLoading ? (
+              <div className="col-span-full flex justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            ) : activeCars.length === 0 ? (
+              <div className="col-span-full text-center py-12 bg-white rounded-lg border shadow-sm">
+                <Car className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                <p className="text-gray-500">لا توجد مزادات نشطة حالياً</p>
+              </div>
+            ) : (
+              activeCars.map((car) => {
+                const mainImage = car.images?.[0]?.image || "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=500";
 
-                    {/* Dark Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
+                return (
+                  <Link to={`/auction/${car.id}`} key={car.id} className="block group">
+                    <div className="overflow-hidden rounded-lg border shadow-sm hover:shadow-md transition-all duration-300">
+                      {/* Image Container */}
+                      <div className="relative aspect-video overflow-hidden rounded-t-lg bg-gray-200">
+                        <img
+                          src={mainImage}
+                          alt={car.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
 
-                    {/* Featured Badge */}
-                    <Badge className="absolute top-3 left-3 bg-gray-900/90 text-white hover:bg-gray-900 border-0 px-3 py-1 text-xs backdrop-blur-sm z-20">
-                      FEATURED
-                    </Badge>
+                        {/* Dark Gradient Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
 
-                    {/* Favorite Button */}
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                      }}
-                      className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/95 shadow-md flex items-center justify-center hover:scale-110 transition-transform z-20"
-                    >
-                      <Users className="w-4 h-4 text-gray-700" />
-                    </button>
+                        {/* Featured Badge */}
+                        <Badge className="absolute top-3 left-3 bg-primary text-white hover:bg-primary border-0 px-3 py-1 text-xs backdrop-blur-sm z-20">
+                          نشط
+                        </Badge>
 
-                    {/* Bottom Info Overlay */}
-                    <div className="absolute bottom-0 left-0 right-0 p-3 flex items-end justify-between text-white z-10">
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        <span className="text-sm">{auction.endTime}</span>
+                        {/* Location Badge */}
+                        <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm shadow-sm rounded-full px-2.5 py-1 flex items-center gap-1 z-20">
+                          <MapPin className="w-3 h-3 text-gray-700" />
+                          <span className="text-xs text-gray-700">{car.location}</span>
+                        </div>
+
+                        {/* Bottom Info Overlay */}
+                        <div className="absolute bottom-0 left-0 right-0 p-3 flex items-end justify-between text-white z-10">
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            <span className="text-sm">{car.auction_duration} أيام</span>
+                          </div>
+                          <div className="text-left">
+                            <div className="text-xs opacity-90">سعر البداية</div>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-sm font-bold">{parseInt(car.start_bid).toLocaleString()} ريال</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-left">
-                        <div className="text-xs opacity-90">Bid</div>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-sm">{auction.currentBid.toLocaleString()} ريال</span>
+
+                      {/* Content */}
+                      <div className="bg-white p-4 rounded-b-lg">
+                        <h3 className="text-gray-900 font-semibold mb-2 line-clamp-1">{car.title}</h3>
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <div className="flex items-center gap-1">
+                            <TrendingUp className="w-3 h-3" />
+                            <span>{car.brand} {car.model}</span>
+                          </div>
+                          <span>{car.year}</span>
                         </div>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Content */}
-                  <div className="bg-white p-3 rounded-b-lg">
-                    <h3 className="text-gray-900 text-sm mb-2">{auction.title}</h3>
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <Users className="w-3 h-3" />
-                      <span>{auction.bids} مزايدة</span>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
+                  </Link>
+                );
+              })
+            )}
           </div>
+
         </div>
       </section>
 

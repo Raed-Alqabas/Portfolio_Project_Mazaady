@@ -17,4 +17,9 @@ urlpatterns = [
     path('auth/login/', api_views.login_api, name='api-login'),
     path('auth/register/', api_views.register_api, name='api-register'),
     path('auth/logout/', api_views.logout_api, name='api-logout'),
+    
+    # Car API endpoints
+    path('cars/add/', api_views.add_car_api, name='api-add-car'),
+    path('cars/my/', api_views.my_cars_api, name='api-my-cars'),
+    path('cars/public/', api_views.public_cars_api, name='api-public-cars'),
 ]

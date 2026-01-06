@@ -153,8 +153,8 @@ export function HeroSection() {
                     onClick={() => setCurrentSlide(index)}
                     className={`h-2 rounded-full transition-all ${
                       index === currentSlide
-                        ? "w-12 bg-accent"
-                        : "w-2 bg-white/30 hover:bg-white/50"
+                        ? "w-2 bg-white/30 hover:bg-white/50"
+                        : "w-12 bg-accent"
                     }`}
                   />
                 ))}
