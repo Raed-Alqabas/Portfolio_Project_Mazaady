@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Mazaady, UserProfile, Car, CarImage
+from .models import Mazaady, Profile, Car, CarImage
 
 # Register your models here.
 
@@ -16,10 +16,10 @@ class MazaadyAdmin(admin.ModelAdmin):
     search_fields = ("title",)
     list_filter = ("status",)
 
-@admin.register(UserProfile)
-class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ("user", "phone")
-    search_fields = ("user__username", "phone")
+@admin.register(Profile)
+class ProfileAdmin(admin.ModelAdmin):
+    list_display = ("user", "phone_country_code", "phone_number")
+    search_fields = ("user__username", "phone_number")
 
 class CarImageInline(admin.TabularInline):
     model = CarImage
