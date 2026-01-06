@@ -2,6 +2,8 @@ from django.db import models
 from decimal import Decimal
 from django.contrib.auth.models import User
 import uuid
+from django.conf import settings
+
 
 # Create your models here.
 class Mazaady(models.Model):
@@ -19,7 +21,8 @@ class Mazaady(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = "mazaady"   # keep table name stable across databases
+            db_table = "mazaady"   # keep table name stable across databases
+
 
     def __str__(self):
         return self.title
@@ -40,7 +43,7 @@ class Payment(models.Model):
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     auction = models.ForeignKey("Mazaady", on_delete=models.CASCADE)
 
-    payer_email = models.EmailField()
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     purpose = models.CharField(max_length=20, choices=PURPOSE_CHOICES)
 
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -55,12 +58,20 @@ class Payment(models.Model):
 
 class AuctionEntry(models.Model):
     auction = models.ForeignKey("Mazaady", on_delete=models.CASCADE)
-    payer_email = models.EmailField()
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     is_paid = models.BooleanField(default=False)
     paid_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        unique_together = ("auction", "payer_email")
+        unique_together = ("auction", "user")
+
+class Profile(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
+    phone_country_code = models.CharField(max_length=5, default="966")
+    phone_number = models.CharField(max_length=20)
+
+    def __str__(self):
+        return f"{self.user.username} Profile"
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
