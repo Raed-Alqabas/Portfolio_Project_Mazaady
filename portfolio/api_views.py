@@ -37,7 +37,17 @@ def login_api(request):
     
     if not username or not password:
         print("DEBUG: Login failed - missing credentials")
-        return Response({'error': 'Please provide both username and password'}, status=400)
+        return Response({'error': 'Please provide both username/email and password'}, status=400)
+
+    # Check if login is by email
+    if '@' in username:
+        try:
+            user_obj = User.objects.get(email=username)
+            username = user_obj.username
+        except User.DoesNotExist:
+            print("DEBUG: Login failed - Email not found")
+            # We continue to authenticate to let it fail naturally with invalid credentials
+            pass
     
     user = authenticate(username=username, password=password)
     

@@ -14,7 +14,7 @@ import {
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { toast } from "sonner";
 import { Toaster } from "./ui/sonner";
-// import logoImage from "figma:asset/5b88b3247f307b659a2fba734515e1ecb70e5897.png";
+import logoImage from "../assets/main-logo.png";
 
 export function RootLayout() {
   const location = useLocation();
@@ -46,9 +46,11 @@ export function RootLayout() {
           <div className="flex items-center justify-between gap-6 h-20">
             {/* Logo */}
             <Link to="/" className="flex-shrink-0 group">
-              <div className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent transition-transform duration-300 group-hover:scale-105">
-                مزادي
-              </div>
+              <img
+                src={logoImage}
+                alt="مزادي"
+                className="h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+              />
             </Link>
 
             {/* Search Bar - Center */}
@@ -228,9 +230,13 @@ export function RootLayout() {
             {/* About */}
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                  مزادي
-                </div>
+                <Link to="/" className="flex-shrink-0 group">
+              <img
+                src={logoImage}
+                alt="مزادي"
+                className="h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+              />
+            </Link>
               </div>
               <p className="text-gray-400 text-sm leading-relaxed">
                 منصة مزادي الأولى في المملكة لمزايدات السيارات. نوفر بيئة آمنة وشفافة لشراء وبيع السيارات.

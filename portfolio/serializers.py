@@ -14,11 +14,13 @@ class UserSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('username', 'email', 'password')
+        fields = ('first_name', 'last_name', 'username', 'email', 'password', 'phone')
         extra_kwargs = {
             'password': {'write_only': True},
             'email': {'required': True}
         }
+    
+    phone = serializers.CharField(required=False, allow_blank=True)
 
     def validate_email(self, value):
         """Ensure email is unique"""
@@ -27,9 +29,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
+        phone = validated_data.pop('phone', None)
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
-            password=validated_data['password']
+            password=validated_data['password'],
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', '')
         )
+        if phone:
+            from .models import UserProfile
+            UserProfile.objects.create(user=user, phone=phone)
         return user
