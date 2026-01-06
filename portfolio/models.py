@@ -21,7 +21,7 @@ class Mazaady(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-            db_table = "mazaady"   # keep table name stable across databases
+        db_table = "mazaady"   # keep table name stable across databases
 
 
     def __str__(self):
@@ -65,6 +65,7 @@ class AuctionEntry(models.Model):
     class Meta:
         unique_together = ("auction", "user")
 
+
 class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     phone_country_code = models.CharField(max_length=5, default="966")
@@ -72,13 +73,6 @@ class Profile(models.Model):
 
     def __str__(self):
         return f"{self.user.username} Profile"
-
-class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
-    phone = models.CharField(max_length=15, blank=True, null=True)
-
-    def __str__(self):
-        return f"{self.user.username}'s profile"
 
 class Car(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cars')
