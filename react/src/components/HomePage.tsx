@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Input } from "./ui/input";
 import { useState } from "react";
 import { HeroSection } from "./HeroSection";
-import logoImage from "figma:asset/5b88b3247f307b659a2fba734515e1ecb70e5897.png";
+import logoImage from "../assets/main-logo.png";
 
 export function HomePage() {
   const featuredAuctions = [
@@ -68,7 +68,7 @@ export function HomePage() {
     <div>
       {/* Hero Section */}
       <HeroSection />
-      
+
       {/* Featured Auctions */}
       <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
@@ -154,15 +154,15 @@ export function HomePage() {
                       alt={auction.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    
+
                     {/* Dark Gradient Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
-                    
+
                     {/* Featured Badge */}
                     <Badge className="absolute top-3 left-3 bg-gray-900/90 text-white hover:bg-gray-900 border-0 px-3 py-1 text-xs backdrop-blur-sm z-20">
                       FEATURED
                     </Badge>
-                    
+
                     {/* Favorite Button */}
                     <button
                       onClick={(e) => {
@@ -172,7 +172,7 @@ export function HomePage() {
                     >
                       <Users className="w-4 h-4 text-gray-700" />
                     </button>
-                    
+
                     {/* Bottom Info Overlay */}
                     <div className="absolute bottom-0 left-0 right-0 p-3 flex items-end justify-between text-white z-10">
                       <div className="flex items-center gap-1">
@@ -187,7 +187,7 @@ export function HomePage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Content */}
                   <div className="bg-white p-3 rounded-b-lg">
                     <h3 className="text-gray-900 text-sm mb-2">{auction.title}</h3>
