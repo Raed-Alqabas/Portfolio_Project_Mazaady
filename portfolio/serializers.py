@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
+from .models import Car, CarImage
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -41,3 +42,24 @@ class RegisterSerializer(serializers.ModelSerializer):
             from .models import UserProfile
             UserProfile.objects.create(user=user, phone=phone)
         return user
+
+class CarImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CarImage
+        fields = ['id', 'image', 'created_at']
+
+class CarSerializer(serializers.ModelSerializer):
+    images = CarImageSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = Car
+        fields = [
+            'id', 'user', 'title', 'brand', 'model', 'year', 'color', 'location',
+            'description', 'mileage', 'fuel', 'transmission', 'engine_size',
+            'cylinders', 'condition', 'vin', 'accidents', 'start_bid',
+            'reserve_price', 'auction_duration', 'inspection_report',
+            'features', 'images', 'status', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['user', 'status']
+
+
