@@ -19,7 +19,9 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
+    username: "",
     email: "",
     phone: "",
     password: "",
@@ -46,13 +48,7 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
       if (mode === "login") {
         // Login Validation
         if (!formData.email || !formData.password) {
-          // Swal.fire({
-          //   position: "center",
-          //   icon: "error",
-          //   title: "البيانات المدخله غير صحيحة!",
-          //   showConfirmButton: false,
-          //   timer: 1500
-          // });
+          toast.error("البيانات المدخلة غير صحيحة!");
           setIsLoading(false);
           return;
         }
@@ -70,15 +66,15 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
         Swal.fire({
           position: "top",
           icon: "success",
-          title: "تم إنشاء الحساب بنجاح حياك " + response.user.username,
+          title: "تم تسجيل الدخول بنجاح! حياك" + response.user.username,
           showConfirmButton: false,
-          timer: 1500
+          timer: 3000
         });
         onOpenChange(false);
         resetForm();
       } else {
         // Registration Validation
-        if (!formData.name || !formData.email || !formData.password) {
+        if (!formData.firstName || !formData.lastName || !formData.username || !formData.email || !formData.password) {
           toast.error("يرجى ملء جميع الحقول المطلوبة");
           setIsLoading(false);
           return;
@@ -90,8 +86,8 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
           return;
         }
 
-        if (formData.name.length < 3) {
-          toast.error("الاسم يجب أن يكون 3 أحرف على الأقل");
+        if (formData.username.length < 3) {
+          toast.error("اسم المستخدم يجب أن يكون 3 أحرف على الأقل");
           setIsLoading(false);
           return;
         }
@@ -109,8 +105,11 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
         }
 
         const response = await register({
-          username: formData.name,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          username: formData.username,
           email: formData.email,
+          phone: formData.phone,
           password: formData.password
         });
 
@@ -124,7 +123,7 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
           icon: "success",
           title: "تم إنشاء الحساب بنجاح! مرحباً بك " + response.user.username,
           showConfirmButton: false,
-          timer: 1500
+          timer: 3000
         });
         onOpenChange(false);
         resetForm();
@@ -169,7 +168,9 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
 
   const resetForm = () => {
     setFormData({
-      name: "",
+      firstName: "",
+      lastName: "",
+      username: "",
       email: "",
       phone: "",
       password: "",
@@ -207,31 +208,68 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === "register" && (
-            <div className="space-y-2">
-              <Label htmlFor="name">الاسم الكامل</Label>
-              <div className="relative">
-                <User className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="أدخل اسمك الكامل"
-                  required
-                  value={formData.name}
-                  onChange={(e) => handleChange("name", e.target.value)}
-                  className="pr-10"
-                />
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">الاسم الأول</Label>
+                  <div className="relative">
+                    <User className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      id="firstName"
+                      type="text"
+                      placeholder="الاسم الأول"
+                      required
+                      value={formData.firstName}
+                      onChange={(e) => handleChange("firstName", e.target.value)}
+                      className="pr-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">الاسم الأخير</Label>
+                  <div className="relative">
+                    <User className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      id="lastName"
+                      type="text"
+                      placeholder="الاسم الأخير"
+                      required
+                      value={formData.lastName}
+                      onChange={(e) => handleChange("lastName", e.target.value)}
+                      className="pr-10"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="username">اسم المستخدم</Label>
+                <div className="relative">
+                  <User className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder="اسم المستخدم"
+                    required
+                    value={formData.username}
+                    onChange={(e) => handleChange("username", e.target.value)}
+                    className="pr-10"
+                  />
+                </div>
+              </div>
+            </>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="email">البريد الإلكتروني</Label>
+            <Label htmlFor="email">
+              {mode === "login" ? "اسم المستخدم أو البريد الإلكتروني" : "البريد الإلكتروني"}
+            </Label>
             <div className="relative">
               <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
                 id="email"
-                type="email"
-                placeholder="example@email.com"
+                type="text"
+                placeholder={mode === "login" ? "ادخل اسم المستخدم او الايميل" : "example@email.com"}
                 required
                 value={formData.email}
                 onChange={(e) => handleChange("email", e.target.value)}
@@ -296,7 +334,7 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
             {isLoading ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                {mode === "login" ? "جاري التسجيل..." : "جاري إنشاء الحساب..."}
+                {mode === "login" ? "جاري تسجيل الدخول..." : "جاري إنشاء الحساب..."}
               </>
             ) : mode === "login" ? (
               <>
