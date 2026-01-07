@@ -1,18 +1,19 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router";
-import { 
-  ArrowRight, 
-  Clock, 
-  Users, 
-  Gavel, 
-  Car, 
-  Fuel, 
-  Gauge, 
+import {
+  ArrowRight,
+  Clock,
+  Users,
+  Gavel,
+  Car,
+  Fuel,
+  Gauge,
   Calendar,
   MapPin,
   Shield,
   FileText,
-  TrendingUp
+  TrendingUp,
+  Loader2
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -21,95 +22,112 @@ import { Input } from "./ui/input";
 import { Separator } from "./ui/separator";
 import { toast } from "sonner";
 import { DepositDialog } from "./DepositDialog";
+import api from "../api/axios";
 
 export function AuctionDetailsPage() {
   const { id } = useParams();
+  const [car, setCar] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState(0);
+
   const [bidAmount, setBidAmount] = useState("");
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
   const [depositPaid, setDepositPaid] = useState(false);
+
+  // Keep mock time for now or adjust based on auction duration
   const [timeLeft, setTimeLeft] = useState({
     hours: 3,
     minutes: 25,
     seconds: 42,
   });
 
-  // Mock auction data
-  const auction = {
-    id: 1,
-    title: "تويوتا كامري 2023",
-    description: "سيارة بحالة ممتازة، فحص شامل من الوكالة، صيانة دورية منتظمة",
-    currentBid: 85000,
-    startBid: 75000,
-    minIncrement: 1000,
-    bidsCount: 24,
-    image: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=800",
-    images: [
-      "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=800",
-      "https://images.unsplash.com/photo-1619405399517-d7fce0f13302?w=800",
-      "https://images.unsplash.com/photo-1617531653332-bd46c24f2068?w=800",
-    ],
-    brand: "تويوتا",
-    model: "كامري",
-    year: 2023,
-    mileage: 15000,
-    fuel: "بنزين",
-    transmission: "أوتوماتيك",
-    color: "أبيض",
-    location: "الرياض",
-    vin: "JTDKARFU5L3123456",
-    category: "سيدان",
+  const fetchCarDetails = async () => {
+    try {
+      const response = await api.get(`/cars/public/${id}/`);
+      setCar(response.data);
+    } catch (error) {
+      console.error("Error fetching car details:", error);
+      toast.error("حدث خطأ أثناء تحميل بيانات الإعلان");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const recentBids = [
-    { user: "محمد ع.", amount: 85000, time: "منذ دقيقتين" },
-    { user: "أحمد س.", amount: 84000, time: "منذ 5 دقائق" },
-    { user: "خالد م.", amount: 83000, time: "منذ 8 دقائق" },
-    { user: "فهد ا.", amount: 82000, time: "منذ 12 دقيقة" },
-    { user: "سعد ح.", amount: 81000, time: "منذ 15 دقيقة" },
-  ];
+  useEffect(() => {
+    fetchCarDetails();
+  }, [id]);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 };
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
-        } else if (prev.hours > 0) {
-          return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        }
+        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
+        if (prev.minutes > 0) return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
+        if (prev.hours > 0) return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
         return prev;
       });
     }, 1000);
-
     return () => clearInterval(timer);
   }, []);
 
-  const handlePlaceBid = () => {
-    // Check if deposit is paid first
-    if (!depositPaid) {
-      setDepositDialogOpen(true);
-      return;
-    }
-    
+  const handlePlaceBid = async () => {
+    const currentBid = car?.current_bid || car?.start_bid || 0;
     const amount = parseFloat(bidAmount);
-    if (!amount || amount <= auction.currentBid) {
-      toast.error("يجب أن يكون المبلغ أكبر من المزايدة الحالية");
+
+    if (!amount || amount <= currentBid) {
+      toast.error(`يجب أن يكون المبلغ أكبر من المزايدة الحالية (${Number(currentBid).toLocaleString()} ريال)`);
       return;
     }
-    if (amount < auction.currentBid + auction.minIncrement) {
-      toast.error(`الحد الأدنى للزيادة هو ${auction.minIncrement.toLocaleString()} ريال`);
-      return;
-    }
-    toast.success("تم تقديم مزايدتك بنجاح!");
+
+    // Virtual experiment: Update local state immediately to show the bid "working"
+    setCar((prev: any) => ({
+      ...prev,
+      current_bid: amount,
+      bids_count: (prev.bids_count || 0) + 1,
+      recent_bids: [
+        {
+          user: "أنت (مزايدة افتراضية)",
+          amount: amount,
+          time: "الآن"
+        },
+        ...(prev.recent_bids || [])
+      ]
+    }));
+
+    toast.success("تم تقديم مزايدتك بنجاح (تجربة افتراضية)!");
     setBidAmount("");
+
+    // Optional: Still try to save to backend but don't block on it
+    try {
+      await api.post(`/cars/${id}/bid/`, { amount });
+    } catch (error) {
+      console.warn("Backend update skipped or failed during virtual experiment");
+    }
   };
 
-  const handleDepositPaid = () => {
-    setDepositPaid(true);
-  };
+  const handleDepositPaid = () => setDepositPaid(true);
 
-  const [selectedImage, setSelectedImage] = useState(0);
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!car) {
+    return (
+      <div className="min-h-screen flex items-center justify-center flex-col gap-4">
+        <p className="text-gray-500">الإعلان غير موجود أو غير نشط</p>
+        <Link to="/"><Button>العودة للرئيسية</Button></Link>
+      </div>
+    );
+  }
+
+  const carImages = car.images?.map((img: any) => img.image) || [];
+  const startBidNum = Number(car.start_bid || 0);
+  const currentBidNum = Number(car.current_bid || startBidNum);
+
+  const recentBids = car.recent_bids || [];
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -120,7 +138,7 @@ export function AuctionDetailsPage() {
           <span>/</span>
           <Link to="/auctions" className="hover:text-blue-600">المزادات</Link>
           <span>/</span>
-          <span>{auction.title}</span>
+          <span>{car.title}</span>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
@@ -128,26 +146,29 @@ export function AuctionDetailsPage() {
           <div className="lg:col-span-2 space-y-6">
             {/* Images */}
             <Card className="overflow-hidden">
-              <div className="aspect-video relative">
-                <img
-                  src={auction.images[selectedImage]}
-                  alt={auction.title}
-                  className="w-full h-full object-cover"
-                />
+              <div className="aspect-video relative bg-gray-100 flex items-center justify-center">
+                {carImages.length > 0 ? (
+                  <img
+                    src={carImages[selectedImage]}
+                    alt={car.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Car className="w-16 h-16 text-gray-300" />
+                )}
                 <Badge className="absolute top-4 left-4 bg-red-500">
                   <Clock className="w-4 h-4 ml-1" />
                   ينتهي خلال {timeLeft.hours}:{String(timeLeft.minutes).padStart(2, '0')}:{String(timeLeft.seconds).padStart(2, '0')}
                 </Badge>
               </div>
               <div className="p-4">
-                <div className="flex gap-2">
-                  {auction.images.map((img, idx) => (
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {carImages.map((img: string, idx: number) => (
                     <button
                       key={idx}
                       onClick={() => setSelectedImage(idx)}
-                      className={`w-20 h-20 rounded overflow-hidden border-2 transition-colors ${
-                        selectedImage === idx ? 'border-blue-600' : 'border-gray-200'
-                      }`}
+                      className={`w-20 h-20 rounded flex-shrink-0 overflow-hidden border-2 transition-colors ${selectedImage === idx ? 'border-blue-600' : 'border-gray-200'
+                        }`}
                     >
                       <img src={img} alt="" className="w-full h-full object-cover" />
                     </button>
@@ -161,10 +182,10 @@ export function AuctionDetailsPage() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="mb-2">{auction.title}</CardTitle>
-                    <CardDescription>{auction.description}</CardDescription>
+                    <CardTitle className="mb-2">{car.title}</CardTitle>
+                    <CardDescription>{car.description}</CardDescription>
                   </div>
-                  <Badge variant="secondary">{auction.category}</Badge>
+                  <Badge variant="secondary">{car.brand}</Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -173,28 +194,28 @@ export function AuctionDetailsPage() {
                     <Calendar className="w-5 h-5 text-gray-500" />
                     <div>
                       <p className="text-xs text-gray-600">السنة</p>
-                      <p>{auction.year}</p>
+                      <p>{car.year}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Gauge className="w-5 h-5 text-gray-500" />
                     <div>
                       <p className="text-xs text-gray-600">الكيلومترات</p>
-                      <p>{auction.mileage.toLocaleString()} كم</p>
+                      <p>{car.mileage?.toLocaleString()} كم</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Fuel className="w-5 h-5 text-gray-500" />
                     <div>
                       <p className="text-xs text-gray-600">الوقود</p>
-                      <p>{auction.fuel}</p>
+                      <p>{car.fuel}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Car className="w-5 h-5 text-gray-500" />
                     <div>
                       <p className="text-xs text-gray-600">ناقل الحركة</p>
-                      <p>{auction.transmission}</p>
+                      <p>{car.transmission}</p>
                     </div>
                   </div>
                 </div>
@@ -204,18 +225,22 @@ export function AuctionDetailsPage() {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-600 mb-1">اللون</p>
-                    <p>{auction.color}</p>
+                    <p>{car.color}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 mb-1">الموقع</p>
                     <div className="flex items-center gap-1">
                       <MapPin className="w-4 h-4 text-gray-500" />
-                      <span>{auction.location}</span>
+                      <span>{car.location}</span>
                     </div>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 mb-1">رقم الهيكل</p>
-                    <p className="text-xs font-mono">{auction.vin}</p>
+                    <p className="text-xs font-mono">{car.vin || "غير متوفر"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">سعة المحرك</p>
+                    <p>{car.engine_size} لتر</p>
                   </div>
                 </div>
 
@@ -241,7 +266,7 @@ export function AuctionDetailsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {recentBids.map((bid, idx) => (
+                  {recentBids.map((bid: any, idx: number) => (
                     <div
                       key={idx}
                       className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
@@ -255,7 +280,7 @@ export function AuctionDetailsPage() {
                           <p className="text-sm text-gray-600">{bid.time}</p>
                         </div>
                       </div>
-                      <p className="text-green-600">{bid.amount.toLocaleString()} ريال</p>
+                      <p className="text-green-600">{Number(bid.amount).toLocaleString()} ريال</p>
                     </div>
                   ))}
                 </div>
@@ -269,17 +294,22 @@ export function AuctionDetailsPage() {
               {/* Bidding Card */}
               <Card>
                 <CardHeader>
-                  <CardTitle>المزايدة</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>المزايدة</CardTitle>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                      تجربة افتراضية
+                    </Badge>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm text-gray-600 mb-1">السعر الحالي</p>
-                    <p className="text-green-600">{auction.currentBid.toLocaleString()} ريال</p>
+                    <p className="text-green-600">{currentBidNum.toLocaleString()} ريال</p>
                   </div>
 
                   <div>
                     <p className="text-sm text-gray-600 mb-1">سعر البداية</p>
-                    <p className="text-gray-900">{auction.startBid.toLocaleString()} ريال</p>
+                    <p className="text-gray-900">{startBidNum.toLocaleString()} ريال</p>
                   </div>
 
                   <Separator />
@@ -288,7 +318,7 @@ export function AuctionDetailsPage() {
                     <p className="text-sm text-gray-600 mb-1">عدد المزايدات</p>
                     <div className="flex items-center gap-2">
                       <Users className="w-4 h-4 text-gray-500" />
-                      <span>{auction.bidsCount} مزايدة</span>
+                      <span>{car.bids_count || 0} مزايدة</span>
                     </div>
                   </div>
 
@@ -306,7 +336,7 @@ export function AuctionDetailsPage() {
 
                   <div>
                     <label className="text-sm text-gray-600 mb-2 block">
-                      مبلغ المزايدة (الحد الأدنى: {(auction.currentBid + auction.minIncrement).toLocaleString()} ريال)
+                      مبلغ المزايدة (الحد الأدنى: {(currentBidNum + 1000).toLocaleString()} ريال)
                     </label>
                     <Input
                       type="number"
@@ -315,8 +345,8 @@ export function AuctionDetailsPage() {
                       onChange={(e) => setBidAmount(e.target.value)}
                       className="mb-3"
                     />
-                    <Button 
-                      className="w-full gap-2" 
+                    <Button
+                      className="w-full gap-2"
                       size="lg"
                       onClick={handlePlaceBid}
                     >
@@ -350,7 +380,7 @@ export function AuctionDetailsPage() {
                   </Button>
                   <Button variant="outline" className="w-full justify-start gap-2">
                     <Shield className="w-4 h-4" />
-                   طلب سجل الصيانة
+                    طلب سجل الصيانة
                   </Button>
                 </CardContent>
               </Card>

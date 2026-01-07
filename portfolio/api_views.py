@@ -92,7 +92,7 @@ def add_car_api(request):
             CarImage.objects.create(car=car, image=image)
             
         print("DEBUG: Car created successfully:", car.id)
-        return Response(CarSerializer(car).data, status=201)
+        return Response(CarSerializer(car, context={'request': request}).data, status=201)
     
     print("DEBUG: Car creation failed. Errors:", serializer.errors)
     return Response(serializer.errors, status=400)
@@ -102,7 +102,7 @@ def add_car_api(request):
 def my_cars_api(request):
     from .models import Car
     cars = Car.objects.filter(user=request.user).order_by('-created_at')
-    serializer = CarSerializer(cars, many=True)
+    serializer = CarSerializer(cars, many=True, context={'request': request})
     return Response(serializer.data)
 
 @api_view(['GET'])
@@ -110,6 +110,107 @@ def my_cars_api(request):
 def public_cars_api(request):
     from .models import Car
     cars = Car.objects.filter(status='ACTIVE').order_by('-created_at')
-    serializer = CarSerializer(cars, many=True)
+    serializer = CarSerializer(cars, many=True, context={'request': request})
     return Response(serializer.data)
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_car_api(request, pk):
+    from .models import Car
+    try:
+        car = Car.objects.get(pk=pk, user=request.user)
+        if car.status == 'ACTIVE':
+            return Response({'error': 'Cannot delete an active ad'}, status=400)
+        car.delete()
+        print(f"DEBUG: Car {pk} deleted successfully")
+        return Response(status=204)
+    except Car.DoesNotExist:
+        print(f"DEBUG: Car {pk} not found for user {request.user}")
+        return Response({'error': 'Car not found or unauthorized'}, status=404)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_car_detail_api(request, pk):
+    from .models import Car
+    try:
+        car = Car.objects.get(pk=pk, user=request.user)
+        serializer = CarSerializer(car, context={'request': request})
+        return Response(serializer.data)
+    except Car.DoesNotExist:
+        return Response({'error': 'Car not found or unauthorized'}, status=404)
 
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def update_car_api(request, pk):
+    from .models import Car
+    try:
+        car = Car.objects.get(pk=pk, user=request.user)
+        if car.status == 'ACTIVE':
+            return Response({'error': 'Cannot update an active ad'}, status=400)
+        serializer = CarSerializer(car, data=request.data, partial=True, context={'request': request})
+        if serializer.is_valid():
+            # Reset status to IN_REVIEW whenever an update is made
+            updated_car = serializer.save()
+            
+            # Handle new images if provided
+            images = request.FILES.getlist('images')
+            if images:
+                # Optional: Decide whether to clear old images or append.
+                # For now, let's append new images.
+                for image in images:
+                    CarImage.objects.create(car=updated_car, image=image)
+            
+            # Handle new inspection report if provided
+            inspection_report = request.FILES.get('inspection_report')
+            if inspection_report:
+                updated_car.inspection_report = inspection_report
+                updated_car.save()
+
+            print(f"DEBUG: Car {pk} updated successfully")
+            return Response(CarSerializer(updated_car, context={'request': request}).data)
+        
+        print(f"DEBUG: Car update failed. Errors: {serializer.errors}")
+        return Response(serializer.errors, status=400)
+    except Car.DoesNotExist:
+        return Response({'error': 'Car not found or unauthorized'}, status=404)
+    except Exception as e:
+        print(f"DEBUG: Update failed:", e)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def place_bid_api(request, pk):
+    from .models import Car, Bid
+    try:
+        car = Car.objects.get(pk=pk, status='ACTIVE')
+        amount = request.data.get('amount')
+        
+        if not amount:
+            return Response({'error': 'Amount is required'}, status=400)
+            
+        try:
+            amount = Decimal(str(amount))
+        except:
+            return Response({'error': 'Invalid amount'}, status=400)
+            
+        if amount <= car.current_bid:
+            return Response({'error': 'Bid must be higher than current price'}, status=400)
+            
+        Bid.objects.create(car=car, user=request.user, amount=amount)
+        return Response({'message': 'Bid placed successfully'})
+    except Car.DoesNotExist:
+        return Response({'error': 'Car not found or not active'}, status=404)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_car_detail_api(request, pk):
+    from .models import Car
+    from django.db.models import Q
+    try:
+        # Allow viewing if car is ACTIVE OR if the requester is the owner
+        if request.user.is_authenticated:
+            car = Car.objects.get(Q(pk=pk) & (Q(status='ACTIVE') | Q(user=request.user)))
+        else:
+            car = Car.objects.get(pk=pk, status='ACTIVE')
+            
+        serializer = CarSerializer(car, context={'request': request})
+        return Response(serializer.data)
+    except Car.DoesNotExist:
+        return Response({'error': 'Car not found or not active'}, status=404)

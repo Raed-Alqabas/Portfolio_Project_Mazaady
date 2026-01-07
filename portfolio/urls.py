@@ -22,4 +22,9 @@ urlpatterns = [
     path('cars/add/', api_views.add_car_api, name='api-add-car'),
     path('cars/my/', api_views.my_cars_api, name='api-my-cars'),
     path('cars/public/', api_views.public_cars_api, name='api-public-cars'),
+    path('cars/<int:pk>/delete/', api_views.delete_car_api, name='api-delete-car'),
+    path('cars/public/<int:pk>/', api_views.public_car_detail_api, name='api-public-car-detail'),
+    path('cars/<int:pk>/bid/', api_views.place_bid_api, name='api-car-place-bid'),
+    path('cars/<int:pk>/', api_views.get_car_detail_api, name='api-car-detail'),
+    path('cars/<int:pk>/update/', api_views.update_car_api, name='api-update-car'),
 ]

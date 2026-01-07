@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from .models import Car, CarImage
+from .models import Car, CarImage, Bid
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -52,6 +52,19 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
+class BidSerializer(serializers.ModelSerializer):
+    user = serializers.CharField(source='user.username', read_only=True)
+    time = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Bid
+        fields = ['user', 'amount', 'time']
+
+    def get_time(self, obj):
+        from django.utils.timesince import timesince
+        from django.utils import timezone
+        return timesince(obj.created_at, timezone.now()) + " ago"
+
 class CarImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = CarImage
@@ -59,6 +72,7 @@ class CarImageSerializer(serializers.ModelSerializer):
 
 class CarSerializer(serializers.ModelSerializer):
     images = CarImageSerializer(many=True, read_only=True)
+    recent_bids = serializers.SerializerMethodField()
     
     class Meta:
         model = Car
@@ -67,8 +81,13 @@ class CarSerializer(serializers.ModelSerializer):
             'description', 'mileage', 'fuel', 'transmission', 'engine_size',
             'cylinders', 'condition', 'vin', 'accidents', 'start_bid',
             'reserve_price', 'auction_duration', 'inspection_report',
-            'features', 'images', 'status', 'created_at', 'updated_at'
+            'features', 'images', 'status', 'current_bid', 'bids_count',
+            'recent_bids', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['user', 'status']
+        read_only_fields = ['user', 'status', 'current_bid', 'bids_count', 'recent_bids']
+
+    def get_recent_bids(self, obj):
+        bids = obj.bids.all()[:10]
+        return BidSerializer(bids, many=True).data
 
 
