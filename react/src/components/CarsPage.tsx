@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
-import { Car as CarIcon, Fuel, Gauge, Calendar, MapPin, Filter, Search, Loader2 } from "lucide-react";
+import { Car as CarIcon, Fuel, Gauge, Calendar, MapPin, Filter, Search, Loader2, Clock, Heart, Users } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
@@ -88,23 +88,76 @@ export function CarsPage() {
             </div>
           ) : (
             filteredCars.map((car) => (
-              <CarCard
-                key={car.id}
-                id={car.id}
-                title={car.title}
-                brand={car.brand}
-                model={car.model}
-                year={car.year}
-                mileage={car.mileage}
-                fuel={car.fuel}
-                transmission={car.transmission}
-                location={car.location}
-                currentBid={Number(car.current_bid)}
-                timeLeft={`${car.auction_duration} أيام`}
-                image={car.images?.[0]?.image}
-                featured={false}
-                highBid={false}
-              />
+              <Card key={car.id} className="group overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                <Link to={`/auction/${car.id}`}>
+                  {/* Image Container */}
+                  <div className="relative aspect-video overflow-hidden bg-gray-200">
+                    {car.images?.[0]?.image ? (
+                      <img
+                        src={car.images[0].image}
+                        alt={car.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <CarIcon className="w-10 h-10 text-gray-300" />
+                      </div>
+                    )}
+
+                    {/* Dark Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
+
+                    {/* Status Badge */}
+                    <Badge className="absolute top-3 left-3 bg-green-500/90 text-white hover:bg-green-500 border-0 px-3 py-1 text-xs backdrop-blur-sm z-20">
+                      نشط
+                    </Badge>
+
+                    {/* Favorite Button */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                      }}
+                      className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/95 shadow-md flex items-center justify-center hover:scale-110 hover:bg-red-50 transition-all z-20 group/fav"
+                    >
+                      <Heart className="w-4 h-4 text-gray-700 group-hover/fav:text-red-500 group-hover/fav:fill-red-500 transition-colors" />
+                    </button>
+
+                    {/* Bottom Info Overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 p-4 text-white z-10">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          <span className="text-sm">{car.auction_duration} أيام</span>
+                        </div>
+                        <div className="text-left">
+                          <div className="text-xs opacity-90">المزايدة الحالية</div>
+                          <div className="font-bold">
+                            {Number(car.current_bid).toLocaleString()} ريال
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <CardContent className="p-4">
+                    <h3 className="text-gray-900 mb-2 line-clamp-1">
+                      {car.title}
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-1">{car.description}</p>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-1 text-gray-500">
+                        <Users className="w-4 h-4" />
+                        <span>{car.bids_count} مزايدة</span>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {car.brand}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Link>
+              </Card>
             ))
           )}
         </div>

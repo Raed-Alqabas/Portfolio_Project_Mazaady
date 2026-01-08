@@ -8,6 +8,7 @@ from .serializers import RegisterSerializer, UserSerializer, CarSerializer
 from .models import CarImage
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.parsers import MultiPartParser, FormParser
+from decimal import Decimal
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -109,7 +110,7 @@ def my_cars_api(request):
 @permission_classes([AllowAny])
 def public_cars_api(request):
     from .models import Car
-    cars = Car.objects.filter(status='ACTIVE').order_by('-created_at')
+    cars = Car.objects.filter(status='ACTIVE').prefetch_related('images', 'bids').order_by('-created_at')
     serializer = CarSerializer(cars, many=True, context={'request': request})
     return Response(serializer.data)
 @api_view(['DELETE'])

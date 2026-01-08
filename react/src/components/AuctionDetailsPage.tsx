@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router";
+import { useParams, Link, useOutletContext } from "react-router";
 import {
   ArrowRight,
   Clock,
@@ -13,7 +13,8 @@ import {
   Shield,
   FileText,
   TrendingUp,
-  Loader2
+  Loader2,
+  Trophy
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -24,8 +25,14 @@ import { toast } from "sonner";
 import { DepositDialog } from "./DepositDialog";
 import api from "../api/axios";
 
+interface AuthContextType {
+  user: { name: string; email: string } | null;
+  setAuthOpen: (open: boolean) => void;
+}
+
 export function AuctionDetailsPage() {
   const { id } = useParams();
+  const { user, setAuthOpen } = useOutletContext<AuthContextType>();
   const [car, setCar] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -34,6 +41,9 @@ export function AuctionDetailsPage() {
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
   const [depositPaid, setDepositPaid] = useState(false);
 
+  // Animation State
+  const [isPriceUpdated, setIsPriceUpdated] = useState(false);
+
   // Keep mock time for now or adjust based on auction duration
   const [timeLeft, setTimeLeft] = useState({
     hours: 3,
@@ -41,13 +51,13 @@ export function AuctionDetailsPage() {
     seconds: 42,
   });
 
-  const fetchCarDetails = async () => {
+  const fetchCarDetails = async (showError = true) => {
     try {
       const response = await api.get(`/cars/public/${id}/`);
       setCar(response.data);
     } catch (error) {
       console.error("Error fetching car details:", error);
-      toast.error("حدث خطأ أثناء تحميل بيانات الإعلان");
+      if (showError) toast.error("حدث خطأ أثناء تحميل بيانات الإعلان");
     } finally {
       setIsLoading(false);
     }
@@ -56,6 +66,25 @@ export function AuctionDetailsPage() {
   useEffect(() => {
     fetchCarDetails();
   }, [id]);
+
+  // Real-time polling for bids and price
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Fetch silently to update price/bids without disturbing user
+      if (id) fetchCarDetails(false);
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [id]);
+
+  // Watch for price changes to trigger animation
+  useEffect(() => {
+    if (car?.current_bid) {
+      setIsPriceUpdated(true);
+      const timer = setTimeout(() => setIsPriceUpdated(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [car?.current_bid]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -70,6 +99,18 @@ export function AuctionDetailsPage() {
   }, []);
 
   const handlePlaceBid = async () => {
+    // 1. Auth Guard: Check if user is logged in
+    if (!user) {
+      toast.error("يرجى تسجيل الدخول أولاً للمشاركة في المزاد");
+      setAuthOpen(true);
+      return;
+    }
+
+    if (!depositPaid) {
+      setDepositDialogOpen(true);
+      return;
+    }
+
     const currentBid = car?.current_bid || car?.start_bid || 0;
     const amount = parseFloat(bidAmount);
 
@@ -78,29 +119,16 @@ export function AuctionDetailsPage() {
       return;
     }
 
-    // Virtual experiment: Update local state immediately to show the bid "working"
-    setCar((prev: any) => ({
-      ...prev,
-      current_bid: amount,
-      bids_count: (prev.bids_count || 0) + 1,
-      recent_bids: [
-        {
-          user: "أنت (مزايدة افتراضية)",
-          amount: amount,
-          time: "الآن"
-        },
-        ...(prev.recent_bids || [])
-      ]
-    }));
-
-    toast.success("تم تقديم مزايدتك بنجاح (تجربة افتراضية)!");
-    setBidAmount("");
-
-    // Optional: Still try to save to backend but don't block on it
     try {
       await api.post(`/cars/${id}/bid/`, { amount });
-    } catch (error) {
-      console.warn("Backend update skipped or failed during virtual experiment");
+      toast.success("تم تقديم مزايدتك بنجاح!");
+      setBidAmount("");
+      // Refresh data
+      fetchCarDetails();
+    } catch (error: any) {
+      console.error("Error placing bid:", error);
+      const message = error.response?.data?.error || "حدث خطأ أثناء تقديم المزايدة";
+      toast.error(message);
     }
   };
 
@@ -156,9 +184,9 @@ export function AuctionDetailsPage() {
                 ) : (
                   <Car className="w-16 h-16 text-gray-300" />
                 )}
-                <Badge className="absolute top-4 left-4 bg-red-500">
+                <Badge className={`absolute top-4 left-4 ${car.status === 'CLOSED' ? 'bg-gray-600' : 'bg-red-500'}`}>
                   <Clock className="w-4 h-4 ml-1" />
-                  ينتهي خلال {timeLeft.hours}:{String(timeLeft.minutes).padStart(2, '0')}:{String(timeLeft.seconds).padStart(2, '0')}
+                  {car.status === 'CLOSED' ? 'المزاد منتهي' : `ينتهي خلال ${timeLeft.hours}:${String(timeLeft.minutes).padStart(2, '0')}:${String(timeLeft.seconds).padStart(2, '0')}`}
                 </Badge>
               </div>
               <div className="p-4">
@@ -294,73 +322,120 @@ export function AuctionDetailsPage() {
               {/* Bidding Card */}
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>المزايدة</CardTitle>
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                      تجربة افتراضية
-                    </Badge>
-                  </div>
+                  <CardTitle>المزايدة</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">السعر الحالي</p>
-                    <p className="text-green-600">{currentBidNum.toLocaleString()} ريال</p>
-                  </div>
+                  {car.status === 'CLOSED' ? (
+                    <div className="text-center py-6 space-y-4">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Gavel className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900">المزاد مغلق</h3>
 
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">سعر البداية</p>
-                    <p className="text-gray-900">{startBidNum.toLocaleString()} ريال</p>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">عدد المزايدات</p>
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-gray-500" />
-                      <span>{car.bids_count || 0} مزايدة</span>
+                      {car.winner ? (
+                        user?.name === car.winner ? (
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-4 animate-pulse">
+                            <Trophy className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                            <p className="font-bold text-green-800 text-lg">مبروك! لقد ربحت المزاد</p>
+                            <p className="text-green-600 text-sm mt-1">سيتم التواصل معك قريباً لإتمام الإجراءات</p>
+                          </div>
+                        ) : (
+                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            <p className="text-gray-600 mb-1">بيعت السيارة لـ</p>
+                            <p className="font-bold text-gray-900 text-lg">{car.winner}</p>
+                            <p className="text-green-600 font-bold mt-2">{Number(car.current_bid).toLocaleString()} ريال</p>
+                          </div>
+                        )
+                      ) : (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                          <p className="text-gray-500">انتهى الوقت ولم يتم البيع</p>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <style>
+                        {`
+                          @keyframes shake-zoom {
+                            0% { transform: scale(1) rotate(0deg); }
+                            25% { transform: scale(1.3) rotate(-5deg); }
+                            50% { transform: scale(1.3) rotate(5deg); }
+                            75% { transform: scale(1.3) rotate(-5deg); }
+                            100% { transform: scale(1) rotate(0deg); }
+                          }
+                          .animate-shake-zoom {
+                            animation: shake-zoom 0.5s ease-in-out;
+                          }
+                        `}
+                      </style>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">السعر الحالي</p>
+                        <p
+                          className={`text-2xl font-bold transition-all duration-300 ${isPriceUpdated
+                            ? "text-green-600 animate-shake-zoom bg-green-50 px-2 rounded"
+                            : "text-green-600"
+                            }`}
+                        >
+                          {currentBidNum.toLocaleString()} ريال
+                        </p>
+                      </div>
 
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">الوقت المتبقي</p>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-red-500" />
-                      <span className="text-red-500">
-                        {timeLeft.hours}:{String(timeLeft.minutes).padStart(2, '0')}:{String(timeLeft.seconds).padStart(2, '0')}
-                      </span>
-                    </div>
-                  </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">سعر البداية</p>
+                        <p className="text-gray-900">{startBidNum.toLocaleString()} ريال</p>
+                      </div>
 
-                  <Separator />
+                      <Separator />
 
-                  <div>
-                    <label className="text-sm text-gray-600 mb-2 block">
-                      مبلغ المزايدة (الحد الأدنى: {(currentBidNum + 1000).toLocaleString()} ريال)
-                    </label>
-                    <Input
-                      type="number"
-                      placeholder="أدخل مبلغ المزايدة"
-                      value={bidAmount}
-                      onChange={(e) => setBidAmount(e.target.value)}
-                      className="mb-3"
-                    />
-                    <Button
-                      className="w-full gap-2"
-                      size="lg"
-                      onClick={handlePlaceBid}
-                    >
-                      <Gavel className="w-5 h-5" />
-                      قدم مزايدتك
-                    </Button>
-                  </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">عدد المزايدات</p>
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-gray-500" />
+                          <span>{car.bids_count || 0} مزايدة</span>
+                        </div>
+                      </div>
 
-                  <div className="bg-yellow-50 p-3 rounded-lg text-sm text-yellow-800">
-                    <p className="flex items-start gap-2">
-                      <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                      بتقديم المزايدة، انت توافق على الشروط والأحكام الخاصة بالمنصة
-                    </p>
-                  </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">الوقت المتبقي</p>
+                        <div className="flex items-center gap-2">
+                          <Clock className={`w-4 h-4 ${timeLeft.hours === 0 && timeLeft.minutes < 10 ? 'text-red-500 animate-pulse' : 'text-gray-500'}`} />
+                          <span className={`${timeLeft.hours === 0 && timeLeft.minutes < 10 ? 'text-red-500 font-bold' : 'text-gray-900'}`}>
+                            {timeLeft.hours}:{String(timeLeft.minutes).padStart(2, '0')}:{String(timeLeft.seconds).padStart(2, '0')}
+                          </span>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      <div>
+                        <label className="text-sm text-gray-600 mb-2 block">
+                          مبلغ المزايدة (الحد الأدنى: {(currentBidNum + 1000).toLocaleString()} ريال)
+                        </label>
+                        <Input
+                          type="number"
+                          placeholder="أدخل مبلغ المزايدة"
+                          value={bidAmount}
+                          onChange={(e) => setBidAmount(e.target.value)}
+                          className="mb-3"
+                        />
+                        <Button
+                          className="w-full gap-2"
+                          size="lg"
+                          onClick={handlePlaceBid}
+                        >
+                          <Gavel className="w-5 h-5" />
+                          قدم مزايدتك
+                        </Button>
+                      </div>
+
+                      <div className="bg-yellow-50 p-3 rounded-lg text-sm text-yellow-800">
+                        <p className="flex items-start gap-2">
+                          <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                          بتقديم المزايدة، انت توافق على الشروط والأحكام الخاصة بالمنصة
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -370,9 +445,16 @@ export function AuctionDetailsPage() {
                   <CardTitle className="text-lg">إجراءات سريعة</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <Button variant="outline" className="w-full justify-start gap-2">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start gap-2"
+                    disabled={!car.inspection_report}
+                    onClick={() => {
+                      if (car.inspection_report) window.open(car.inspection_report, '_blank');
+                    }}
+                  >
                     <FileText className="w-4 h-4" />
-                    عرض تقرير الفحص
+                    {car.inspection_report ? "عرض تقرير الفحص" : "تقرير الفحص غير متوفر"}
                   </Button>
                   <Button variant="outline" className="w-full justify-start gap-2">
                     <Car className="w-4 h-4" />

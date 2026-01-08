@@ -73,6 +73,7 @@ class CarImageSerializer(serializers.ModelSerializer):
 class CarSerializer(serializers.ModelSerializer):
     images = CarImageSerializer(many=True, read_only=True)
     recent_bids = serializers.SerializerMethodField()
+    winner = serializers.CharField(source='winner.username', read_only=True)
     
     class Meta:
         model = Car
@@ -82,7 +83,7 @@ class CarSerializer(serializers.ModelSerializer):
             'cylinders', 'condition', 'vin', 'accidents', 'start_bid',
             'reserve_price', 'auction_duration', 'inspection_report',
             'features', 'images', 'status', 'current_bid', 'bids_count',
-            'recent_bids', 'created_at', 'updated_at'
+            'recent_bids', 'created_at', 'updated_at', 'winner'
         ]
         read_only_fields = ['user', 'status', 'current_bid', 'bids_count', 'recent_bids']
 

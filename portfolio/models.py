@@ -111,10 +111,14 @@ class Car(models.Model):
     # Meta or Extra
     features = models.JSONField(default=list, blank=True)
     
+    # Auction Result
+    winner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='won_cars')
+    
     STATUS_CHOICES = [
         ('IN_REVIEW', 'In Review'),
         ('ACTIVE', 'Active'),
         ('REJECTED', 'Rejected'),
+        ('CLOSED', 'Closed'),
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
     
