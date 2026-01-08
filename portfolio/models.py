@@ -111,16 +111,28 @@ class Car(models.Model):
     # Meta or Extra
     features = models.JSONField(default=list, blank=True)
     
+    # Auction Result
+    winner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='won_cars')
+    
     STATUS_CHOICES = [
         ('IN_REVIEW', 'In Review'),
         ('ACTIVE', 'Active'),
         ('REJECTED', 'Rejected'),
+        ('CLOSED', 'Closed'),
     ]
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='IN_REVIEW')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def current_bid(self):
+        last_bid = self.bids.order_by('-amount').first()
+        return last_bid.amount if last_bid else self.start_bid
+
+    @property
+    def bids_count(self):
+        return self.bids.count()
 
     def __str__(self):
         return f"{self.year} {self.brand} {self.model}"
@@ -132,3 +144,15 @@ class CarImage(models.Model):
 
     def __str__(self):
         return f"Image for {self.car}"
+
+class Bid(models.Model):
+    car = models.ForeignKey(Car, on_delete=models.CASCADE, related_name='bids')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bids')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-amount']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.amount} on {self.car}"

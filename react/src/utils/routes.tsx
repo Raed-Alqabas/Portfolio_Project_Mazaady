@@ -7,6 +7,7 @@ import { MyBidsPage } from "../components/MyBidsPage";
 import { MyAdsPage } from "../components/MyAdsPage";
 import { ProfilePage } from "../components/ProfilePage";
 import { AddCarPage } from "../components/AddCarPage";
+import { EditCarPage } from "../components/EditCarPage";
 import { FavoritesPage } from "../components/FavoritesPage";
 import { DashboardPage } from "../components/DashboardPage";
 import { RootLayout } from "../components/RootLayout";
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
       { path: "dashboard", Component: DashboardPage },
       { path: "profile", Component: ProfilePage },
       { path: "add-car", Component: AddCarPage },
+      { path: "edit-car/:id", Component: EditCarPage },
     ],
   },
 ]);

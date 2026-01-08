@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { Toaster } from "./ui/sonner";
 import logoImage from "../assets/main-logo.png";
 
+import { logout } from "../api/auth";
+
 export function RootLayout() {
   const location = useLocation();
   const [authOpen, setAuthOpen] = useState(false);
@@ -32,7 +34,8 @@ export function RootLayout() {
     setUser(userData);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     setUser(null);
     toast.success("تم تسجيل الخروج بنجاح");
   };
@@ -220,7 +223,7 @@ export function RootLayout() {
 
       {/* Main Content */}
       <main>
-        <Outlet />
+        <Outlet context={{ user, setAuthOpen }} />
       </main>
 
       {/* Footer */}
@@ -231,12 +234,12 @@ export function RootLayout() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <Link to="/" className="flex-shrink-0 group">
-              <img
-                src={logoImage}
-                alt="مزادي"
-                className="h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
-              />
-            </Link>
+                  <img
+                    src={logoImage}
+                    alt="مزادي"
+                    className="h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                  />
+                </Link>
               </div>
               <p className="text-gray-400 text-sm leading-relaxed">
                 منصة مزادي الأولى في المملكة لمزايدات السيارات. نوفر بيئة آمنة وشفافة لشراء وبيع السيارات.

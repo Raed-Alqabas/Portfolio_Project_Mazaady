@@ -1,116 +1,34 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
-import { Clock, Users, Gavel, Filter, Heart, Star } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import { Clock, Users, Gavel, Filter, Heart, Car as CarIcon } from "lucide-react";
+import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import api from "../api/axios";
 
 export function AuctionsPage() {
   const [filter, setFilter] = useState("all");
+  const [activeCars, setActiveCars] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const auctions = [
-    {
-      id: 1,
-      title: "تويوتا كامري 2023",
-      description: "حالة ممتازة - فحص شامل",
-      currentBid: 85000,
-      startBid: 75000,
-      endTime: "3 ساعات",
-      image: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=500",
-      bids: 24,
-      category: "سيدان",
-      status: "active",
-    },
-    {
-      id: 2,
-      title: "مرسيدس E-Class 2022",
-      description: "كامل المواصفات - صيانة وكالة",
-      currentBid: 180000,
-      startBid: 160000,
-      endTime: "5 ساعات",
-      image: "https://images.unsplash.com/photo-1617531653332-bd46c24f2068?w=500",
-      bids: 31,
-      category: "سيدان",
-      status: "active",
-    },
-    {
-      id: 3,
-      title: "هوندا أكورد 2024",
-      description: "جديدة - لم تستخدم",
-      currentBid: 95000,
-      startBid: 90000,
-      endTime: "2 ساعات",
-      image: "https://images.unsplash.com/photo-1619405399517-d7fce0f13302?w=500",
-      bids: 18,
-      category: "سيدان",
-      status: "active",
-    },
-    {
-      id: 4,
-      title: "BMW X5 2023",
-      description: "فل كامل - بحالة الوكالة",
-      currentBid: 220000,
-      startBid: 200000,
-      endTime: "4 ساعات",
-      image: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=500",
-      bids: 42,
-      category: "دفع رباعي",
-      status: "active",
-    },
-    {
-      id: 5,
-      title: "لكزس ES 2023",
-      description: "هايبرد - اقتصادية",
-      currentBid: 145000,
-      startBid: 135000,
-      endTime: "6 ساعات",
-      image: "https://images.unsplash.com/photo-1623869675781-80aa31012a5a?w=500",
-      bids: 27,
-      category: "سيدان",
-      status: "active",
-    },
-    {
-      id: 6,
-      title: "جيب رانجلر 2022",
-      description: "معدلة - جاهزة للبر",
-      currentBid: 165000,
-      startBid: 150000,
-      endTime: "1 ساعة",
-      image: "https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=500",
-      bids: 35,
-      category: "دفع رباعي",
-      status: "ending",
-    },
-    {
-      id: 7,
-      title: "أودي A6 2024",
-      description: "قريباً - قيد المراجعة",
-      currentBid: 0,
-      startBid: 200000,
-      endTime: "يبدأ خلال 2 أيام",
-      image: "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=500",
-      bids: 0,
-      category: "سيدان",
-      status: "upcoming",
-    },
-    {
-      id: 8,
-      title: "تويوتا لاند كروزر 2023",
-      description: "قريباً - قيد المراجعة",
-      currentBid: 0,
-      startBid: 280000,
-      endTime: "يبدأ خلال 3 أيام",
-      image: "https://images.unsplash.com/photo-1581540222194-0def2dda95b8?w=500",
-      bids: 0,
-      category: "دفع رباعي",
-      status: "upcoming",
-    },
-  ];
+  useEffect(() => {
+    fetchActiveCars();
+  }, []);
 
-  const filteredAuctions = filter === "all" 
-    ? auctions 
-    : auctions.filter(a => a.status === filter);
+  const fetchActiveCars = async () => {
+    try {
+      const response = await api.get("/cars/public/");
+      setActiveCars(response.data);
+    } catch (error) {
+      console.error("Error fetching active cars:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredAuctions = filter === "all"
+    ? activeCars
+    : activeCars.filter(a => a.status === filter); // Though they are all ACTIVE from public endpoint
 
   return (
     <div className="min-h-screen bg-background py-8">
@@ -142,9 +60,7 @@ export function AuctionsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">جميع المزادات</SelectItem>
-                  <SelectItem value="active">نشطة</SelectItem>
-                  <SelectItem value="ending">تنتهي قريباً</SelectItem>
-                  <SelectItem value="upcoming">قريباً تعرض</SelectItem>
+                  <SelectItem value="ACTIVE">نشطة</SelectItem>
                 </SelectContent>
               </Select>
               <Badge variant="secondary" className="mr-auto bg-primary/10 text-primary border-primary/20">
@@ -156,84 +72,89 @@ export function AuctionsPage() {
 
         {/* Auctions Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAuctions.map((auction) => (
-            <Card key={auction.id} className="group overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-              <Link to={`/auction/${auction.id}`}>
-                {/* Image Container */}
-                <div className="relative aspect-video overflow-hidden bg-gray-200">
-                  <img
-                    src={auction.image}
-                    alt={auction.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  
-                  {/* Dark Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
-                  
-                  {/* Status Badge */}
-                  {auction.status === 'upcoming' ? (
-                    <Badge className="absolute top-3 left-3 bg-amber-500/90 text-white hover:bg-amber-500 border-0 px-3 py-1 text-xs backdrop-blur-sm z-20">
-                      قريباً
-                    </Badge>
-                  ) : auction.status === 'ending' ? (
-                    <Badge className="absolute top-3 left-3 bg-red-500/90 text-white hover:bg-red-500 border-0 px-3 py-1 text-xs backdrop-blur-sm z-20">
-                      ينتهي قريباً
-                    </Badge>
-                  ) : (
+          {isLoading ? (
+            <div className="col-span-full flex justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+          ) : filteredAuctions.length === 0 ? (
+            <div className="col-span-full text-center py-12 bg-white rounded-lg border shadow-sm">
+              <CarIcon className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+              <p className="text-gray-500">لا توجد مزادات نشطة حالياً</p>
+            </div>
+          ) : (
+            filteredAuctions.map((auction) => (
+              <Card key={auction.id} className="group overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                <Link to={`/auction/${auction.id}`}>
+                  {/* Image Container */}
+                  <div className="relative aspect-video overflow-hidden bg-gray-200">
+                    {auction.images?.[0]?.image ? (
+                      <img
+                        src={auction.images[0].image}
+                        alt={auction.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <CarIcon className="w-10 h-10 text-gray-300" />
+                      </div>
+                    )}
+
+                    {/* Dark Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
+
+                    {/* Status Badge */}
                     <Badge className="absolute top-3 left-3 bg-green-500/90 text-white hover:bg-green-500 border-0 px-3 py-1 text-xs backdrop-blur-sm z-20">
                       نشط
                     </Badge>
-                  )}
-                  
-                  {/* Favorite Button */}
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                    }}
-                    className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/95 shadow-md flex items-center justify-center hover:scale-110 hover:bg-red-50 transition-all z-20 group/fav"
-                  >
-                    <Heart className="w-4 h-4 text-gray-700 group-hover/fav:text-red-500 group-hover/fav:fill-red-500 transition-colors" />
-                  </button>
-                  
-                  {/* Bottom Info Overlay */}
-                  <div className="absolute bottom-0 left-0 right-0 p-4 text-white z-10">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        <span className="text-sm">{auction.endTime}</span>
-                      </div>
-                      {auction.status !== 'upcoming' && (
+
+                    {/* Favorite Button */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                      }}
+                      className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/95 shadow-md flex items-center justify-center hover:scale-110 hover:bg-red-50 transition-all z-20 group/fav"
+                    >
+                      <Heart className="w-4 h-4 text-gray-700 group-hover/fav:text-red-500 group-hover/fav:fill-red-500 transition-colors" />
+                    </button>
+
+                    {/* Bottom Info Overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 p-4 text-white z-10">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          <span className="text-sm">{auction.auction_duration} أيام</span>
+                        </div>
                         <div className="text-left">
                           <div className="text-xs opacity-90">المزايدة الحالية</div>
                           <div className="font-bold">
-                            {auction.currentBid.toLocaleString()} ريال
+                            {Number(auction.current_bid).toLocaleString()} ريال
                           </div>
                         </div>
-                      )}
+                      </div>
                     </div>
                   </div>
-                </div>
-                
-                {/* Content */}
-                <CardContent className="p-4">
-                  <h3 className="text-gray-900 mb-2 line-clamp-1">
-                    {auction.title}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-1">{auction.description}</p>
-                  
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-1 text-gray-500">
-                      <Users className="w-4 h-4" />
-                      <span>{auction.bids} مزايدة</span>
+
+                  {/* Content */}
+                  <CardContent className="p-4">
+                    <h3 className="text-gray-900 mb-2 line-clamp-1">
+                      {auction.title}
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-1">{auction.description}</p>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-1 text-gray-500">
+                        <Users className="w-4 h-4" />
+                        <span>{auction.bids_count} مزايدة</span>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {auction.brand}
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className="text-xs">
-                      {auction.category}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Link>
-            </Card>
-          ))}
+                  </CardContent>
+                </Link>
+              </Card>
+            ))
+          )}
         </div>
       </div>
     </div>

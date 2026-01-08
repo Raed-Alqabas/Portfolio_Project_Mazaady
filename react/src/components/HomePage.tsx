@@ -149,18 +149,24 @@ export function HomePage() {
               </div>
             ) : (
               activeCars.map((car) => {
-                const mainImage = car.images?.[0]?.image || "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=500";
+                const mainImage = car.images?.[0]?.image;
 
                 return (
                   <Link to={`/auction/${car.id}`} key={car.id} className="block group">
                     <div className="overflow-hidden rounded-lg border shadow-sm hover:shadow-md transition-all duration-300">
                       {/* Image Container */}
                       <div className="relative aspect-video overflow-hidden rounded-t-lg bg-gray-200">
-                        <img
-                          src={mainImage}
-                          alt={car.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
+                        {mainImage ? (
+                          <img
+                            src={mainImage}
+                            alt={car.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                            <Car className="w-10 h-10 text-gray-300" />
+                          </div>
+                        )}
 
                         {/* Dark Gradient Overlay */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />

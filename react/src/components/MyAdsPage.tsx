@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router";
-import { Plus, Edit, Trash2, Eye, Clock, AlertCircle } from "lucide-react";
+import { useNavigate, Link } from "react-router";
+import { Plus, Edit, Trash2, Eye, Clock, AlertCircle, Car } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import api from "../api/axios";
 
 export function MyAdsPage() {
+  const navigate = useNavigate();
   const [ads, setAds] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -31,23 +32,20 @@ export function MyAdsPage() {
     if (!confirm("هل أنت متأكد من حذف هذا الإعلان؟")) return;
 
     try {
-      // Assuming a delete endpoint exists or will be added if needed, 
-      // but for now let's just simulate if not explicitly requested.
-      // However, usually we'd want a real delete.
-      // Since it's not in the plan, I'll stick to what's requested.
-      // The user didn't ask for DELETE but the UI has it. 
-      // I'll skip real delete for now to stay focused on the status/listing task.
+      await api.delete(`/cars/${id}/delete/`);
       setAds(ads.filter(ad => ad.id !== id));
       toast.success("تم حذف الإعلان بنجاح");
     } catch (error) {
+      console.error("Error deleting car:", error);
       toast.error("حدث خطأ أثناء الحذف");
     }
   };
 
+
   const getStatusInfo = (status: string) => {
     switch (status) {
       case 'IN_REVIEW':
-        return { label: 'قيد المراجعة', color: 'bg-orange-500/90' };
+        return { label: 'قيد المراجعة', color: 'bg-orange-500' };
       case 'ACTIVE':
         return { label: 'نشط', color: 'bg-green-500/90' };
       case 'REJECTED':
@@ -90,24 +88,30 @@ export function MyAdsPage() {
           ) : (
             ads.map((ad) => {
               const statusInfo = getStatusInfo(ad.status);
-              const mainImage = ad.images?.[0]?.image || "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=500";
+              const mainImage = ad.images?.[0]?.image;
 
               return (
                 <div key={ad.id} className="group">
                   <div className="overflow-hidden rounded-lg border shadow-sm hover:shadow-md transition-shadow">
                     {/* Image Container */}
                     <div className="relative aspect-video overflow-hidden rounded-t-lg bg-gray-100">
-                      <img
-                        src={mainImage}
-                        alt={ad.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
+                      {mainImage ? (
+                        <img
+                          src={mainImage}
+                          alt={ad.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                          <Car className="w-10 h-10 text-gray-300" />
+                        </div>
+                      )}
 
                       {/* Dark Gradient Overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
 
                       {/* Status Badge */}
-                      <Badge className={`absolute top-3 left-3 ${statusInfo.color} text-white border-0 px-3 py-1 text-xs backdrop-blur-sm z-20`}>
+                      <Badge className={`absolute top-3 left-3 text-white ${statusInfo.color} border-0 px-3 py-1 text-xs backdrop-blur-sm z-20`}>
                         {statusInfo.label}
                       </Badge>
 
@@ -142,9 +146,14 @@ export function MyAdsPage() {
                             عرض
                           </Button>
                         </Link>
-                        {ad.status === "IN_REVIEW" && (
+                        {ad.status !== "ACTIVE" && (
                           <>
-                            <Button variant="outline" size="sm" className="gap-1 text-xs h-9">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-xs h-9"
+                              onClick={() => navigate(`/edit-car/${ad.id}`)}
+                            >
                               <Edit className="w-3 h-3" />
                               تعديل
                             </Button>
