@@ -10,6 +10,10 @@ import { AddCarPage } from "../components/AddCarPage";
 import { FavoritesPage } from "../components/FavoritesPage";
 import { DashboardPage } from "../components/DashboardPage";
 import { RootLayout } from "../components/RootLayout";
+import { TermsPage } from "../components/TermsPage";
+import { PrivacyPage } from "../components/PrivacyPage";
+import { NotificationsPage } from "../components/NotificationsPage";
+import { ComingSoonPage } from "../components/ComingSoonPage";
 
 export const router = createBrowserRouter([
   {
@@ -26,6 +30,10 @@ export const router = createBrowserRouter([
       { path: "dashboard", Component: DashboardPage },
       { path: "profile", Component: ProfilePage },
       { path: "add-car", Component: AddCarPage },
+      { path: "terms", Component: TermsPage },
+      { path: "privacy", Component: PrivacyPage },
+      { path: "notifications", Component: NotificationsPage },
+      { path: "coming-soon", Component: ComingSoonPage },
     ],
   },
 ]);

@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import { HeroSection } from "./HeroSection";
 import logoImage from "../assets/main-logo.png";
 import api from "../api/axios";
+import { CarCard } from "./CarCard";
 
 
 export function HomePage() {
@@ -26,9 +27,20 @@ export function HomePage() {
   const fetchActiveCars = async () => {
     try {
       const response = await api.get("/cars/public/");
-      setActiveCars(response.data);
+      // Handle different response formats
+      const data = response.data;
+      if (Array.isArray(data)) {
+        setActiveCars(data);
+      } else if (data && Array.isArray(data.results)) {
+        // Handle paginated response
+        setActiveCars(data.results);
+      } else {
+        console.warn("Unexpected API response format:", data);
+        setActiveCars([]);
+      }
     } catch (error) {
       console.error("Error fetching active cars:", error);
+      setActiveCars([]);
     } finally {
       setIsLoading(false);
     }
@@ -51,7 +63,7 @@ export function HomePage() {
       description: "آلاف المشترين والبائعين الموثوقين",
     },
     {
-      icon: TrendingUp,
+      icon: TrendingUp, 
       title: "أسعار تنافسية",
       description: "احصل على أفضل العروض والصفقات",
     },
@@ -61,7 +73,7 @@ export function HomePage() {
   return (
     <div>
       {/* Hero Section */}
-      <HeroSection />
+      {activeCars.length > 0 && <HeroSection auctions={activeCars.slice(0, 5)} />}
 
       {/* Featured Auctions */}
       <section className="py-16 bg-gray-50">
@@ -92,8 +104,8 @@ export function HomePage() {
                       <SelectItem value="all">جميع الأنواع</SelectItem>
                       <SelectItem value="sedan">سيدان</SelectItem>
                       <SelectItem value="suv">دفع رباعي</SelectItem>
+                      <SelectItem value="luxury">فاخرة</SelectItem>
                       <SelectItem value="sports">رياضية</SelectItem>
-                      <SelectItem value="truck">شاحنة</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -108,214 +120,125 @@ export function HomePage() {
                       <SelectItem value="riyadh">الرياض</SelectItem>
                       <SelectItem value="jeddah">جدة</SelectItem>
                       <SelectItem value="dammam">الدمام</SelectItem>
-                      <SelectItem value="makkah">مكة</SelectItem>
-                      <SelectItem value="madinah">المدينة</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="md:col-span-1">
-                  <Link to="/auctions">
-                    <Button className="w-full">
-                      <Search className="w-4 h-4" />
-                    </Button>
-                  </Link>
+                  <Button className="w-full h-full">
+                    بحث
+                  </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="mb-2">المزادات المميزة</h2>
-              <p className="text-gray-600">أحدث المزادات النشطة الآن</p>
+          <div className="flex flex-col items-center mb-12">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="h-px w-8 bg-primary"></div>
+              <span className="text-primary font-bold text-sm uppercase tracking-wider">سوقنا المباشر</span>
+              <div className="h-px w-8 bg-primary"></div>
             </div>
-            <Link to="/auctions">
-              <Button variant="outline" className="gap-2">
-                عرض الكل
-                <TrendingUp className="w-4 h-4" />
-              </Button>
-            </Link>
+            <h2 className="text-3xl font-black text-gray-900 mb-4 text-center">
+              المزادات المختارة بعناية
+            </h2>
+            <p className="text-gray-500 text-center max-w-2xl leading-relaxed">
+              تصفح مجموعتنا الحصرية من السيارات المفحوصة والمضمونة. نضمن لك تجربة مزايدة شفافة وآمنة للوصول لسيارة أحلامك.
+            </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
             {isLoading ? (
-              <div className="col-span-full flex justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              <div className="col-span-full flex flex-col items-center justify-center py-20 bg-white rounded-3xl border-2 border-dashed border-gray-100">
+                <div className="relative">
+                  <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+                  <Gavel className="absolute inset-0 m-auto w-6 h-6 text-primary animate-pulse" />
+                </div>
+                <p className="mt-4 text-gray-500 font-medium animate-pulse">جاري تحميل أفضل المزادات...</p>
               </div>
             ) : activeCars.length === 0 ? (
-              <div className="col-span-full text-center py-12 bg-white rounded-lg border shadow-sm">
-                <Car className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-                <p className="text-gray-500">لا توجد مزادات نشطة حالياً</p>
+              <div className="col-span-full text-center py-20 bg-white rounded-3xl border-2 border-dashed border-gray-100">
+                <Car className="w-16 h-16 text-gray-200 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-gray-900 mb-2">لا توجد مزادات حالياً</h3>
+                <p className="text-gray-500 max-w-xs mx-auto">ترقبوا قريباً، سيتم إضافة سيارات جديدة ومميزة للمنصة.</p>
               </div>
             ) : (
               activeCars.map((car) => {
-                const mainImage = car.images?.[0]?.image || "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=500";
-
-                return (
-                  <Link to={`/auction/${car.id}`} key={car.id} className="block group">
-                    <div className="overflow-hidden rounded-lg border shadow-sm hover:shadow-md transition-all duration-300">
-                      {/* Image Container */}
-                      <div className="relative aspect-video overflow-hidden rounded-t-lg bg-gray-200">
-                        <img
-                          src={mainImage}
-                          alt={car.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-
-                        {/* Dark Gradient Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
-
-                        {/* Featured Badge */}
-                        <Badge className="absolute top-3 left-3 bg-primary text-white hover:bg-primary border-0 px-3 py-1 text-xs backdrop-blur-sm z-20">
-                          نشط
-                        </Badge>
-
-                        {/* Location Badge */}
-                        <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm shadow-sm rounded-full px-2.5 py-1 flex items-center gap-1 z-20">
-                          <MapPin className="w-3 h-3 text-gray-700" />
-                          <span className="text-xs text-gray-700">{car.location}</span>
-                        </div>
-
-                        {/* Bottom Info Overlay */}
-                        <div className="absolute bottom-0 left-0 right-0 p-3 flex items-end justify-between text-white z-10">
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            <span className="text-sm">{car.auction_duration} أيام</span>
-                          </div>
-                          <div className="text-left">
-                            <div className="text-xs opacity-90">سعر البداية</div>
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-sm font-bold">{parseInt(car.start_bid).toLocaleString()} ريال</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Content */}
-                      <div className="bg-white p-4 rounded-b-lg">
-                        <h3 className="text-gray-900 font-semibold mb-2 line-clamp-1">{car.title}</h3>
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <div className="flex items-center gap-1">
-                            <TrendingUp className="w-3 h-3" />
-                            <span>{car.brand} {car.model}</span>
-                          </div>
-                          <span>{car.year}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                );
+                  return (
+                    <CarCard 
+                      key={car.id}
+                      id={car.id}
+                      title={car.title}
+                      brand={car.brand}
+                      model={car.model}
+                      year={car.year}
+                      mileage={car.mileage}
+                      fuel={car.fuel}
+                      transmission={car.transmission}
+                      location={car.location}
+                      currentBid={car.latest_bid || car.start_bid}
+                      endTime={new Date(new Date(car.created_at).getTime() + car.auction_duration * 24 * 60 * 60 * 1000).toISOString()}
+                      image={car.images?.[0]?.image || ""}
+                      featured={car.status === 'ACTIVE'}
+                      isFavorited={car.is_favorited}
+                    />
+                  );
               })
             )}
           </div>
 
+          <div className="mt-12 text-center">
+            <Link to="/auctions">
+              <Button variant="outline" size="lg" className="px-10 rounded-xl border-2 hover:bg-primary hover:text-white transition-all font-bold group">
+                مشاهدة جميع السيارات
+                <ArrowRight className="w-4 h-4 mr-2 rotate-180 group-hover:translate-x-[-4px] transition-transform" />
+              </Button>
+             </Link>
+          </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-16 bg-gray-100">
+      {/* Trust Badges */}
+      <section className="py-12 bg-white border-t border-gray-100">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="mb-4">لماذا تختار منصتنا؟</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              نوفر لك تجربة مزادات آمنة وسهلة مع أفضل الخدمات
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {features.map((feature, index) => (
-              <Card key={index} className="text-center">
-                <CardHeader>
-                  <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                    <feature.icon className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <CardTitle className="text-lg">{feature.title}</CardTitle>
-                  <CardDescription>{feature.description}</CardDescription>
-                </CardHeader>
-              </Card>
+              <div key={index} className="flex items-center gap-4 p-4 rounded-xl hover:bg-blue-50/50 transition-colors">
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <feature.icon className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-sm">{feature.title}</h3>
+                  <p className="text-xs text-gray-500">{feature.description}</p>
+                </div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Contact Us Section */}
-      <section className="py-16 bg-gray-100">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="mb-4">تواصل معنا</h2>
-              <p className="text-gray-600">
-                نحن هنا لمساعدتك في أي استفسار أو طلب
-              </p>
+      {/* App Stats Section */}
+      <section className="py-20 bg-primary text-white overflow-hidden relative">
+         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+            <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+               <path d="M0 100 C 20 0 50 0 100 100 Z" fill="currentColor" />
+            </svg>
+         </div>
+         <div className="container mx-auto px-4 relative z-10">
+            <div className="grid md:grid-cols-3 gap-12 text-center">
+               <div className="space-y-4">
+                  <div className="text-5xl font-black">+15,000</div>
+                  <div className="text-blue-100 font-bold">مزاد تم بنجاح منذ 2023</div>
+               </div>
+               <div className="space-y-4">
+                  <div className="text-5xl font-black">100%</div>
+                  <div className="text-blue-100 font-bold">فحص فني مضمون قبل الشراء</div>
+               </div>
+               <div className="space-y-4">
+                  <div className="text-5xl font-black">+50k</div>
+                  <div className="text-blue-100 font-bold">مزايد نشط وموثوق شهرياً</div>
+               </div>
             </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-8">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Mail className="w-7 h-7 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="mb-1">البريد الإلكتروني</h3>
-                      <p className="text-sm text-gray-600">راسلنا في أي وقت</p>
-                    </div>
-                  </div>
-                  <a
-                    href="mailto:info@mazady.sa"
-                    className="text-blue-600 hover:text-blue-700 transition-colors block p-3 bg-blue-50 rounded-lg text-center"
-                  >
-                    info@mazady.sa
-                  </a>
-                  <p className="text-xs text-gray-500 mt-3 text-center">
-                    سنرد عليك خلال 24 ساعة
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-8">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center">
-                      <Phone className="w-7 h-7 text-green-600" />
-                    </div>
-                    <div>
-                      <h3 className="mb-1">الهاتف</h3>
-                      <p className="text-sm text-gray-600">اتصل بنا مباشرة</p>
-                    </div>
-                  </div>
-                  <a
-                    href="tel:+966920001234"
-                    className="text-green-600 hover:text-green-700 transition-colors block p-3 bg-green-50 rounded-lg text-center"
-                  >
-                    920001234
-                  </a>
-                  <p className="text-xs text-gray-500 mt-3 text-center">
-                    الأحد - الخميس (9 ص - 5 م)
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card className="mt-6 bg-blue-900 text-white">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Shield className="w-8 h-8" />
-                    <div>
-                      <p className="mb-1">خدمة عملاء متميزة</p>
-                      <p className="text-sm text-blue-200">نحن دائماً بجانبك لمساعدتك</p>
-                    </div>
-                  </div>
-                  <Button variant="secondary" className="gap-2">
-                    <Mail className="w-4 h-4" />
-                    راسلنا الآن
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+         </div>
       </section>
     </div>
   );

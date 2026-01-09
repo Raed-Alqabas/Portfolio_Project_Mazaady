@@ -1,3 +1,5 @@
+
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { 
   Gavel, 
@@ -14,124 +16,79 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
+import { getDashboardStats, DashboardData } from "../api/dashboard";
+import { formatDistanceToNow } from "date-fns";
+import { ar } from "date-fns/locale";
 
 export function DashboardPage() {
-  const stats = [
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const statsData = await getDashboardStats();
+        setData(statsData);
+      } catch (error) {
+        console.error("Failed to load dashboard stats", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadStats();
+  }, []);
+
+  if (loading || !data) {
+     return (
+      <div className="min-h-screen bg-gray-50 py-8 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  const { stats, recent_bids: recentBids, recent_activity: recentActivity } = data;
+
+  const statItems = [
     {
       title: "مزايداتي النشطة",
-      value: "5",
-      change: "+2",
-      changeType: "increase",
+      value: stats.active_bids.toString(),
       icon: Gavel,
       color: "blue",
       link: "/my-bids",
     },
     {
       title: "مزادات فزت بها",
-      value: "12",
-      change: "+3",
-      changeType: "increase",
+      value: stats.won_auctions.toString(),
       icon: Award,
       color: "green",
       link: "/my-bids?filter=won",
     },
     {
       title: "المفضلة",
-      value: "8",
-      change: "+1",
-      changeType: "increase",
+      value: stats.favorites.toString(),
       icon: Heart,
       color: "red",
       link: "/favorites",
     },
     {
       title: "إجمالي الإنفاق",
-      value: "850,000 ريال",
-      change: "+120,000",
-      changeType: "increase",
+      value: `${stats.total_spending.toLocaleString()} ريال`,
       icon: DollarSign,
       color: "purple",
       link: "#",
     },
   ];
 
-  const recentBids = [
-    {
-      id: 1,
-      title: "تويوتا كامري 2023",
-      currentBid: 85000,
-      myBid: 82000,
-      timeLeft: "3 ساعات",
-      status: "active",
-      image: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=300",
-    },
-    {
-      id: 2,
-      title: "مرسيدس E-Class 2022",
-      currentBid: 180000,
-      myBid: 175000,
-      timeLeft: "1 ساعة",
-      status: "outbid",
-      image: "https://images.unsplash.com/photo-1617531653332-bd46c24f2068?w=300",
-    },
-    {
-      id: 3,
-      title: "BMW X5 2021",
-      currentBid: 210000,
-      myBid: 210000,
-      timeLeft: "منتهي",
-      status: "won",
-      image: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=300",
-    },
-  ];
-
-  const recentActivity = [
-    {
-      type: "bid",
-      message: "قمت بالمزايدة على تويوتا كامري 2023",
-      time: "منذ 5 دقائق",
-      amount: "82,000 ريال",
-    },
-    {
-      type: "outbid",
-      message: "تم التفوق عليك في مرسيدس E-Class 2022",
-      time: "منذ 15 دقيقة",
-      amount: "180,000 ريال",
-    },
-    {
-      type: "favorite",
-      message: "أضفت هوندا أكورد 2024 للمفضلة",
-      time: "منذ ساعة",
-      amount: null,
-    },
-    {
-      type: "won",
-      message: "مبروك! فزت بمزاد BMW X5 2021",
-      time: "منذ ساعتين",
-      amount: "210,000 ريال",
-    },
-  ];
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
-        return (
-          <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/20">
-            مزايدة نشطة
-          </Badge>
-        );
+        return <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/20">مزايدة نشطة</Badge>;
       case "outbid":
-        return (
-          <Badge className="bg-amber-500/10 text-amber-700 border-amber-500/20">
-            تم التفوق عليك
-          </Badge>
-        );
+        return <Badge className="bg-amber-500/10 text-amber-700 border-amber-500/20">تم التفوق عليك</Badge>;
       case "won":
-        return (
-          <Badge className="bg-green-500/10 text-green-700 border-green-500/20">
-            فائز
-          </Badge>
-        );
+        return <Badge className="bg-green-500/10 text-green-700 border-green-500/20">فائز</Badge>;
+      case "ended":
+         return <Badge className="bg-gray-500/10 text-gray-700 border-gray-500/20">منتهي</Badge>;
       default:
         return null;
     }
@@ -139,19 +96,14 @@ export function DashboardPage() {
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case "bid":
-        return <Gavel className="w-5 h-5 text-blue-500" />;
-      case "outbid":
-        return <TrendingDown className="w-5 h-5 text-amber-500" />;
-      case "favorite":
-        return <Heart className="w-5 h-5 text-red-500" />;
-      case "won":
-        return <Award className="w-5 h-5 text-green-500" />;
-      default:
-        return <Activity className="w-5 h-5 text-gray-500" />;
+      case "bid": return <Gavel className="w-5 h-5 text-blue-500" />;
+      case "outbid": return <TrendingDown className="w-5 h-5 text-amber-500" />;
+      case "favorite": return <Heart className="w-5 h-5 text-red-500" />;
+      case "won": return <Award className="w-5 h-5 text-green-500" />;
+      default: return <Activity className="w-5 h-5 text-gray-500" />;
     }
   };
-
+    
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
@@ -170,23 +122,13 @@ export function DashboardPage() {
 
         {/* Stats Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
+          {statItems.map((stat, index) => (
             <Link to={stat.link} key={index}>
-              <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer">
+              <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer h-full">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className={`w-12 h-12 bg-${stat.color}-100 rounded-xl flex items-center justify-center`}>
                       <stat.icon className={`w-6 h-6 text-${stat.color}-600`} />
-                    </div>
-                    <div className={`flex items-center gap-1 text-sm ${
-                      stat.changeType === "increase" ? "text-green-600" : "text-red-600"
-                    }`}>
-                      {stat.changeType === "increase" ? (
-                        <TrendingUp className="w-4 h-4" />
-                      ) : (
-                        <TrendingDown className="w-4 h-4" />
-                      )}
-                      <span>{stat.change}</span>
                     </div>
                   </div>
                   <div>
@@ -202,7 +144,7 @@ export function DashboardPage() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Recent Bids */}
           <div className="lg:col-span-2">
-            <Card className="border-0 shadow-md">
+            <Card className="border-0 shadow-md h-full">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
@@ -210,96 +152,92 @@ export function DashboardPage() {
                     <CardDescription>آخر المزادات التي شاركت فيها</CardDescription>
                   </div>
                   <Link to="/my-bids">
-                    <Button variant="outline" size="sm">
-                      عرض الكل
-                    </Button>
+                    <Button variant="outline" size="sm">عرض الكل</Button>
                   </Link>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {recentBids.map((bid) => (
-                    <Link
-                      to={`/auction/${bid.id}`}
-                      key={bid.id}
-                      className="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors group"
-                    >
-                      {/* Image */}
-                      <div className="relative w-24 h-20 rounded-lg overflow-hidden flex-shrink-0">
-                        <img
-                          src={bid.image}
-                          alt={bid.title}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                        />
-                      </div>
+                {recentBids.length > 0 ? (
+                    <div className="space-y-4">
+                    {recentBids.map((bid) => (
+                        <Link
+                        to={`/auction/${bid.id}`}
+                        key={bid.id}
+                        className="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors group border border-gray-100"
+                        >
+                        {/* Image */}
+                        <div className="relative w-24 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200">
+                             {bid.image && <img src={bid.image} alt={bid.title} className="w-full h-full object-cover" />}
+                        </div>
 
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-2">
-                          <h3 className="text-gray-900 font-medium line-clamp-1">
-                            {bid.title}
-                          </h3>
-                          {getStatusBadge(bid.status)}
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between mb-2">
+                            <h3 className="text-gray-900 font-medium line-clamp-1">{bid.title}</h3>
+                            {getStatusBadge(bid.status)}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                                <span className="text-gray-500">مزايدتي:</span>
+                                <span className="text-gray-900 font-medium mr-1">{bid.myBid.toLocaleString()} ريال</span>
+                            </div>
+                            <div>
+                                <span className="text-gray-500">الحالية:</span>
+                                <span className="text-gray-900 font-medium mr-1">{bid.currentBid.toLocaleString()} ريال</span>
+                            </div>
+                            </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>
-                            <span className="text-gray-500">مزايدتي:</span>
-                            <span className="text-gray-900 font-medium mr-1">
-                              {bid.myBid.toLocaleString()} ريال
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">الحالية:</span>
-                            <span className="text-gray-900 font-medium mr-1">
-                              {bid.currentBid.toLocaleString()} ريال
-                            </span>
-                          </div>
-                        </div>
-                      </div>
 
-                      {/* Time */}
-                      <div className="text-left flex-shrink-0">
-                        <div className="flex items-center gap-1 text-sm text-gray-500">
-                          <Clock className="w-4 h-4" />
-                          {bid.timeLeft}
+                        {/* Time */}
+                        <div className="text-left flex-shrink-0">
+                            <div className="flex items-center gap-1 text-sm text-gray-500">
+                            <Clock className="w-4 h-4" />
+                            {bid.timeLeft}
+                            </div>
                         </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+                        </Link>
+                    ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-8 text-gray-500">
+                        لا توجد مزايدات حديثة
+                    </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
           {/* Recent Activity */}
           <div>
-            <Card className="border-0 shadow-md">
+            <Card className="border-0 shadow-md h-full">
               <CardHeader>
                 <CardTitle>النشاط الأخير</CardTitle>
                 <CardDescription>آخر الإجراءات التي قمت بها</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentActivity.map((activity, index) => (
+                  {recentActivity.length > 0 ? recentActivity.map((activity, index) => (
                     <div key={index} className="flex gap-3 pb-4 border-b border-gray-100 last:border-0 last:pb-0">
                       <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
                         {getActivityIcon(activity.type)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-900 mb-1">
-                          {activity.message}
-                        </p>
+                        <p className="text-sm text-gray-900 mb-1">{activity.message}</p>
                         <div className="flex items-center justify-between">
-                          <p className="text-xs text-gray-500">{activity.time}</p>
+                          <p className="text-xs text-gray-500 text-right" dir="ltr">
+                             {formatDistanceToNow(new Date(activity.time), { addSuffix: true, locale: ar })}
+                          </p>
                           {activity.amount && (
-                            <p className="text-xs font-medium text-primary">
-                              {activity.amount}
-                            </p>
+                            <p className="text-xs font-medium text-primary">{activity.amount}</p>
                           )}
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="text-center py-8 text-gray-500">
+                        لا يوجد نشاط حديث
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

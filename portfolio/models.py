@@ -31,6 +31,7 @@ class Payment(models.Model):
     PURPOSE_CHOICES = [
         ("ENTRY_FEE", "Entry Fee"),
         ("FINAL_CHARGE", "Final Charge"),
+        ("GLOBAL_ACCESS", "Global Bidding Access"),
     ]
 
     STATUS_CHOICES = [
@@ -41,7 +42,7 @@ class Payment(models.Model):
     ]
 
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    auction = models.ForeignKey("Mazaady", on_delete=models.CASCADE)
+    auction = models.ForeignKey("Mazaady", on_delete=models.SET_NULL, null=True, blank=True)
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     purpose = models.CharField(max_length=20, choices=PURPOSE_CHOICES)
@@ -70,6 +71,21 @@ class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     phone_country_code = models.CharField(max_length=5, default="966")
     phone_number = models.CharField(max_length=20)
+    bidding_access = models.BooleanField(default=False)
+    masked_id = models.CharField(max_length=20, blank=True, null=True, unique=True)
+
+    def save(self, *args, **kwargs):
+        if not self.masked_id:
+            import random
+            import string
+            # Generate something like MZ-4829
+            random_digits = ''.join(random.choices(string.digits, k=4))
+            self.masked_id = f"MZ-{random_digits}"
+            # Simple retry if collision (very unlikely)
+            while Profile.objects.filter(masked_id=self.masked_id).exists():
+                random_digits = ''.join(random.choices(string.digits, k=4))
+                self.masked_id = f"MZ-{random_digits}"
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.user.username} Profile"
@@ -132,3 +148,26 @@ class CarImage(models.Model):
 
     def __str__(self):
         return f"Image for {self.car}"
+
+class Bid(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bids')
+    car = models.ForeignKey(Car, on_delete=models.CASCADE, related_name='bids')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.amount}"
+
+    class Meta:
+        ordering = ['-amount']
+
+class Favorite(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favorites')
+    car = models.ForeignKey(Car, on_delete=models.CASCADE, related_name='favorited_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'car')
+
+    def __str__(self):
+        return f"{self.user.username} likes {self.car.title}"

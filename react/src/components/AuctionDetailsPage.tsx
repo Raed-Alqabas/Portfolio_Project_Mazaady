@@ -12,7 +12,8 @@ import {
   MapPin,
   Shield,
   FileText,
-  TrendingUp
+  TrendingUp,
+  Heart
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -21,54 +22,65 @@ import { Input } from "./ui/input";
 import { Separator } from "./ui/separator";
 import { toast } from "sonner";
 import { DepositDialog } from "./DepositDialog";
+import { getProfile } from "../api/profile";
+import api from "../api/axios";
 
 export function AuctionDetailsPage() {
   const { id } = useParams();
+  const [auction, setAuction] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [bidAmount, setBidAmount] = useState("");
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
   const [depositPaid, setDepositPaid] = useState(false);
   const [timeLeft, setTimeLeft] = useState({
-    hours: 3,
-    minutes: 25,
-    seconds: 42,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
   });
 
-  // Mock auction data
-  const auction = {
-    id: 1,
-    title: "تويوتا كامري 2023",
-    description: "سيارة بحالة ممتازة، فحص شامل من الوكالة، صيانة دورية منتظمة",
-    currentBid: 85000,
-    startBid: 75000,
-    minIncrement: 1000,
-    bidsCount: 24,
-    image: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=800",
-    images: [
-      "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=800",
-      "https://images.unsplash.com/photo-1619405399517-d7fce0f13302?w=800",
-      "https://images.unsplash.com/photo-1617531653332-bd46c24f2068?w=800",
-    ],
-    brand: "تويوتا",
-    model: "كامري",
-    year: 2023,
-    mileage: 15000,
-    fuel: "بنزين",
-    transmission: "أوتوماتيك",
-    color: "أبيض",
-    location: "الرياض",
-    vin: "JTDKARFU5L3123456",
-    category: "سيدان",
+  const fetchAuctionDetails = async () => {
+    try {
+      const response = await api.get(`/auctions/${id}/`);
+      setAuction(response.data);
+      setLoading(false);
+      
+      // Calculate time left based on created_at and auction_duration
+      const createdAt = new Date(response.data.created_at);
+      const durationDays = response.data.auction_duration;
+      const endTime = new Date(createdAt.getTime() + durationDays * 24 * 60 * 60 * 1000);
+      const now = new Date();
+      const diff = endTime.getTime() - now.getTime();
+      
+      if (diff > 0) {
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        setTimeLeft({ hours, minutes, seconds });
+      } else {
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
+      }
+    } catch (error) {
+      console.error("Failed to fetch auction details", error);
+      toast.error("فشل في تحميل تفاصيل المزاد");
+      setLoading(false);
+    }
   };
 
-  const recentBids = [
-    { user: "محمد ع.", amount: 85000, time: "منذ دقيقتين" },
-    { user: "أحمد س.", amount: 84000, time: "منذ 5 دقائق" },
-    { user: "خالد م.", amount: 83000, time: "منذ 8 دقائق" },
-    { user: "فهد ا.", amount: 82000, time: "منذ 12 دقيقة" },
-    { user: "سعد ح.", amount: 81000, time: "منذ 15 دقيقة" },
-  ];
-
   useEffect(() => {
+    fetchAuctionDetails();
+    
+    // Polling for updates every 5 seconds
+    const pollInterval = setInterval(fetchAuctionDetails, 5000);
+
+    // Bidding access check
+    getProfile().then(data => {
+        if (data.bidding_access) {
+            setDepositPaid(true);
+        }
+    }).catch(err => {
+        console.log("Not logged in or error checking profile", err);
+    });
+
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev.seconds > 0) {
@@ -82,10 +94,13 @@ export function AuctionDetailsPage() {
       });
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, []);
+    return () => {
+        clearInterval(timer);
+        clearInterval(pollInterval);
+    };
+  }, [id]);
 
-  const handlePlaceBid = () => {
+  const handlePlaceBid = async () => {
     // Check if deposit is paid first
     if (!depositPaid) {
       setDepositDialogOpen(true);
@@ -93,16 +108,31 @@ export function AuctionDetailsPage() {
     }
     
     const amount = parseFloat(bidAmount);
-    if (!amount || amount <= auction.currentBid) {
+    const currentPrice = auction.bids.length > 0 ? auction.bids[0].amount : auction.start_bid;
+    
+    if (!amount || amount <= currentPrice) {
       toast.error("يجب أن يكون المبلغ أكبر من المزايدة الحالية");
       return;
     }
-    if (amount < auction.currentBid + auction.minIncrement) {
-      toast.error(`الحد الأدنى للزيادة هو ${auction.minIncrement.toLocaleString()} ريال`);
+    
+    const minIncrement = 1000;
+    if (amount < currentPrice + minIncrement) {
+      toast.error(`الحد الأدنى للزيادة هو ${minIncrement.toLocaleString()} ريال`);
       return;
     }
-    toast.success("تم تقديم مزايدتك بنجاح!");
-    setBidAmount("");
+
+    try {
+        await api.post(`/auctions/${id}/bid/`, { amount });
+        toast.success("تم تقديم مزايدتك بنجاح!");
+        setBidAmount("");
+        fetchAuctionDetails(); // Refresh immediately
+    } catch (error: any) {
+        if (error.response?.data?.error === 'ACCESS_DENIED') {
+            setDepositDialogOpen(true);
+        } else {
+            toast.error(error.response?.data?.error || "فشل تقديم المزايدة");
+        }
+    }
   };
 
   const handleDepositPaid = () => {
@@ -111,253 +141,223 @@ export function AuctionDetailsPage() {
 
   const [selectedImage, setSelectedImage] = useState(0);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!auction) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>المزاد غير موجود</p>
+      </div>
+    );
+  }
+
+  const currentPrice = auction.bids.length > 0 ? auction.bids[0].amount : auction.start_bid;
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm mb-6 text-gray-600">
-          <Link to="/" className="hover:text-blue-600">الرئيسية</Link>
-          <span>/</span>
-          <Link to="/auctions" className="hover:text-blue-600">المزادات</Link>
-          <span>/</span>
-          <span>{auction.title}</span>
+    <div className="min-h-screen bg-white">
+      <div className="container mx-auto px-4 py-8">
+        {/* Breadcrumbs */}
+        <div className="flex items-center gap-2 text-sm text-gray-500 mb-6 font-bold">
+          <Link to="/" className="hover:text-primary transition-colors">الرئيسية</Link>
+          <ArrowRight className="w-3 h-3 rotate-180" />
+          <Link to="/auctions" className="hover:text-primary transition-colors">المزادات</Link>
+          <ArrowRight className="w-3 h-3 rotate-180" />
+          <span className="text-gray-900">{auction.title}</span>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Images */}
-            <Card className="overflow-hidden">
-              <div className="aspect-video relative">
-                <img
-                  src={auction.images[selectedImage]}
-                  alt={auction.title}
-                  className="w-full h-full object-cover"
-                />
-                <Badge className="absolute top-4 left-4 bg-red-500">
-                  <Clock className="w-4 h-4 ml-1" />
-                  ينتهي خلال {timeLeft.hours}:{String(timeLeft.minutes).padStart(2, '0')}:{String(timeLeft.seconds).padStart(2, '0')}
-                </Badge>
+          <div className="lg:col-span-2 space-y-8">
+            {/* Main Header */}
+            <div>
+              <h1 className="text-3xl font-black text-gray-900 mb-2">{auction.title}</h1>
+              <div className="flex items-center gap-2 text-gray-500 font-bold">
+                <MapPin className="w-4 h-4 text-primary" />
+                <span>{auction.location}</span>
               </div>
-              <div className="p-4">
-                <div className="flex gap-2">
-                  {auction.images.map((img, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setSelectedImage(idx)}
-                      className={`w-20 h-20 rounded overflow-hidden border-2 transition-colors ${
-                        selectedImage === idx ? 'border-blue-600' : 'border-gray-200'
-                      }`}
-                    >
-                      <img src={img} alt="" className="w-full h-full object-cover" />
-                    </button>
-                  ))}
-                </div>
+            </div>
+
+            {/* Image Gallery */}
+            <div className="space-y-4">
+              <div className="aspect-video bg-gray-100 rounded-3xl overflow-hidden shadow-sm border border-gray-100">
+                {auction.images && auction.images.length > 0 ? (
+                  <img
+                    src={`${(import.meta as any).env.VITE_API_URL}${auction.images[selectedImage].image}`}
+                    alt={auction.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Car className="w-16 h-16 text-gray-300" />
+                  </div>
+                )}
               </div>
-            </Card>
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {auction.images?.map((img: any, idx: number) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedImage(idx)}
+                    className={`flex-shrink-0 w-24 h-16 rounded-xl overflow-hidden border-2 transition-all ${
+                      selectedImage === idx ? 'border-primary ring-2 ring-primary/10' : 'border-transparent'
+                    }`}
+                  >
+                    <img src={`${(import.meta as any).env.VITE_API_URL}${img.image}`} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
 
-            {/* Details */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="mb-2">{auction.title}</CardTitle>
-                    <CardDescription>{auction.description}</CardDescription>
-                  </div>
-                  <Badge variant="secondary">{auction.category}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <p className="text-xs text-gray-600">السنة</p>
-                      <p>{auction.year}</p>
+            {/* Car Details Grid */}
+            <Card className="border-0 bg-gray-50 shadow-sm rounded-3xl">
+              <CardContent className="p-8">
+                 <h3 className="text-lg font-black mb-6">المواصفات الأساسية</h3>
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div className="bg-white p-4 rounded-2xl border border-gray-100 text-center">
+                      <Calendar className="w-5 h-5 text-primary mx-auto mb-2" />
+                      <p className="text-xs text-gray-400 font-bold mb-1">السنة</p>
+                      <p className="text-gray-900 font-black">{auction.year}</p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Gauge className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <p className="text-xs text-gray-600">الكيلومترات</p>
-                      <p>{auction.mileage.toLocaleString()} كم</p>
+                    <div className="bg-white p-4 rounded-2xl border border-gray-100 text-center">
+                      <Gauge className="w-5 h-5 text-primary mx-auto mb-2" />
+                      <p className="text-xs text-gray-400 font-bold mb-1">المسافة</p>
+                      <p className="text-gray-900 font-black">{auction.mileage?.toLocaleString() ?? "0"} كم</p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Fuel className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <p className="text-xs text-gray-600">الوقود</p>
-                      <p>{auction.fuel}</p>
+                    <div className="bg-white p-4 rounded-2xl border border-gray-100 text-center">
+                      <Fuel className="w-5 h-5 text-primary mx-auto mb-2" />
+                      <p className="text-xs text-gray-400 font-bold mb-1">الوقود</p>
+                      <p className="text-gray-900 font-black">{auction.fuel}</p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Car className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <p className="text-xs text-gray-600">ناقل الحركة</p>
-                      <p>{auction.transmission}</p>
+                    <div className="bg-white p-4 rounded-2xl border border-gray-100 text-center">
+                      <Car className="w-5 h-5 text-primary mx-auto mb-2" />
+                      <p className="text-xs text-gray-400 font-bold mb-1">ناقل الحركة</p>
+                      <p className="text-gray-900 font-black">{auction.transmission}</p>
                     </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">اللون</p>
-                    <p>{auction.color}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">الموقع</p>
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-4 h-4 text-gray-500" />
-                      <span>{auction.location}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">رقم الهيكل</p>
-                    <p className="text-xs font-mono">{auction.vin}</p>
-                  </div>
-                </div>
-
-                <div className="bg-blue-50 p-4 rounded-lg flex items-start gap-3">
-                  <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="text-blue-900 mb-1">معلومات الفحص</p>
-                    <p className="text-sm text-blue-700">
-                      السيارة خضعت لفحص شامل من قبل خبراء معتمدين وحصلت على تقييم ممتاز
-                    </p>
-                  </div>
-                </div>
+                 </div>
               </CardContent>
             </Card>
 
-            {/* Recent Bids */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  سجل المزايدات ({recentBids.length})
+            {/* Description */}
+            <div className="space-y-4">
+              <h3 className="text-xl font-black text-gray-900">وصف السيارة</h3>
+              <p className="text-gray-600 leading-relaxed text-lg whitespace-pre-line">
+                {auction.description}
+              </p>
+            </div>
+
+            {/* Bidding History */}
+            <Card className="border-0 shadow-sm rounded-3xl bg-white overflow-hidden border border-gray-50">
+              <CardHeader className="bg-gray-50 py-4 px-8">
+                <CardTitle className="text-lg font-black flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-primary" />
+                  سجل المزايدات
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {recentBids.map((bid, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Users className="w-5 h-5 text-blue-600" />
+              <CardContent className="p-0">
+                <div className="divide-y divide-gray-50">
+                  {auction.bids.map((bid: any, index: number) => (
+                    <div key={index} className={`flex items-center justify-between p-6 ${bid.is_mine ? 'bg-primary/5' : ''}`}>
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold shadow-sm ${bid.is_mine ? 'bg-primary text-white' : 'bg-gray-100 text-gray-400'}`}>
+                           {bid.is_mine ? bid.username.charAt(0) : '?'}
                         </div>
                         <div>
-                          <p>{bid.user}</p>
-                          <p className="text-sm text-gray-600">{bid.time}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-gray-900">{bid.is_mine ? bid.username : 'مزايد مخفي'}</p>
+                            {bid.is_mine && <Badge variant="outline" className="text-[10px] text-primary border-primary">أنت</Badge>}
+                          </div>
+                          <p className="text-[10px] text-gray-400 font-bold">{bid.user_masked_id}</p>
                         </div>
                       </div>
-                      <p className="text-green-600">{bid.amount.toLocaleString()} ريال</p>
+                      <div className="text-left">
+                        <p className="text-lg font-black text-primary">{bid.amount?.toLocaleString() ?? "0"} ريال</p>
+                        <p className="text-[10px] text-gray-400 font-bold">الرتبة: #{bid.rank}</p>
+                      </div>
                     </div>
                   ))}
+                  {auction.bids.length === 0 && (
+                    <div className="py-12 text-center text-gray-400 font-bold">
+                       لا توجد مزايدات حتى الآن
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </div>
 
           {/* Sidebar */}
-          <div className="sticky top-20 self-start">
-            <div className="space-y-6 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-              {/* Bidding Card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>المزايدة</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">السعر الحالي</p>
-                    <p className="text-green-600">{auction.currentBid.toLocaleString()} ريال</p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">سعر البداية</p>
-                    <p className="text-gray-900">{auction.startBid.toLocaleString()} ريال</p>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">عدد المزايدات</p>
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-gray-500" />
-                      <span>{auction.bidsCount} مزايدة</span>
+          <div className="space-y-6">
+            <Card className="sticky top-24 border-0 shadow-lg rounded-[2rem] bg-white overflow-hidden border border-gray-50">
+              <CardHeader className="bg-primary text-white p-8">
+                <p className="text-blue-100 text-xs font-bold uppercase tracking-wider mb-1">المزايدة الحالية</p>
+                <CardTitle className="text-4xl font-black">
+                  {currentPrice?.toLocaleString() ?? "0"} <span className="text-sm font-normal">ريال</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-8 space-y-8">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-gray-50 rounded-2xl text-center">
+                    <p className="text-[10px] text-gray-400 font-bold mb-1">الوقت المتبقي</p>
+                    <div className="flex items-center justify-center gap-2 text-red-600 font-black">
+                      <Clock className="w-4 h-4" />
+                      <span>{timeLeft.hours}:{String(timeLeft.minutes).padStart(2, '0')}:{String(timeLeft.seconds).padStart(2, '0')}</span>
                     </div>
                   </div>
-
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">الوقت المتبقي</p>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-red-500" />
-                      <span className="text-red-500">
-                        {timeLeft.hours}:{String(timeLeft.minutes).padStart(2, '0')}:{String(timeLeft.seconds).padStart(2, '0')}
-                      </span>
+                  <div className="p-4 bg-gray-50 rounded-2xl text-center">
+                    <p className="text-[10px] text-gray-400 font-bold mb-1">المزايدات</p>
+                    <div className="flex items-center justify-center gap-2 text-gray-900 font-black">
+                      <Users className="w-4 h-4 text-primary" />
+                      <span>{auction.bids.length}</span>
                     </div>
                   </div>
+                </div>
 
-                  <Separator />
-
+                <div className="space-y-4">
                   <div>
-                    <label className="text-sm text-gray-600 mb-2 block">
-                      مبلغ المزايدة (الحد الأدنى: {(auction.currentBid + auction.minIncrement).toLocaleString()} ريال)
+                    <label className="text-xs text-gray-400 font-bold mb-2 block mr-1">
+                      قدم عرضك (أقل زيادة: 1,000 ريال)
                     </label>
-                    <Input
-                      type="number"
-                      placeholder="أدخل مبلغ المزايدة"
-                      value={bidAmount}
-                      onChange={(e) => setBidAmount(e.target.value)}
-                      className="mb-3"
-                    />
-                    <Button 
-                      className="w-full gap-2" 
-                      size="lg"
-                      onClick={handlePlaceBid}
-                    >
-                      <Gavel className="w-5 h-5" />
-                      قدم مزايدتك
-                    </Button>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        placeholder="أدخل مبلغ المزايدة"
+                        value={bidAmount}
+                        onChange={(e) => setBidAmount(e.target.value)}
+                        className="h-14 rounded-2xl pr-4 border-gray-100 font-bold text-lg bg-gray-50 focus:bg-white transition-all shadow-inner"
+                      />
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">ريال</span>
+                    </div>
                   </div>
+                  <Button 
+                    className="w-full h-14 rounded-2xl text-lg font-black shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-3"
+                    onClick={handlePlaceBid}
+                  >
+                    <Gavel className="w-5 h-5" />
+                    تقديم المزايدة
+                  </Button>
+                </div>
 
-                  <div className="bg-yellow-50 p-3 rounded-lg text-sm text-yellow-800">
-                    <p className="flex items-start gap-2">
-                      <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                      بتقديم المزايدة، انت توافق على الشروط والأحكام الخاصة بالمنصة
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Quick Actions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">إجراءات سريعة</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button variant="outline" className="w-full justify-start gap-2">
-                    <FileText className="w-4 h-4" />
-                    عرض تقرير الفحص
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start gap-2">
-                    <Car className="w-4 h-4" />
-                    طلب معاينة السيارة
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start gap-2">
-                    <Shield className="w-4 h-4" />
-                   طلب سجل الصيانة
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
+                <div className="space-y-4 pt-4 border-t border-gray-50">
+                   <h4 className="text-sm font-black text-gray-900">إجراءات سريعة</h4>
+                   <Button variant="outline" className="w-full rounded-xl justify-start gap-3 border-gray-100 text-gray-600 font-bold hover:bg-gray-50">
+                      <FileText className="w-4 h-4 text-primary" />
+                      تقرير الفحص الفني
+                   </Button>
+                   <Button variant="outline" className="w-full rounded-xl justify-start gap-3 border-gray-100 text-gray-600 font-bold hover:bg-gray-50">
+                      <Shield className="w-4 h-4 text-green-500" />
+                      ضمان منصة مزادي
+                   </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
+
       <DepositDialog
         open={depositDialogOpen}
         onOpenChange={setDepositDialogOpen}
