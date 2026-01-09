@@ -23,6 +23,7 @@ import { Input } from "./ui/input";
 import { Separator } from "./ui/separator";
 import { toast } from "sonner";
 import { DepositDialog } from "./DepositDialog";
+import { PaymentConfirmDialog } from "./PaymentConfirmDialog";
 import api from "../api/axios";
 
 interface AuthContextType {
@@ -39,6 +40,7 @@ export function AuctionDetailsPage() {
 
   const [bidAmount, setBidAmount] = useState("");
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [depositPaid, setDepositPaid] = useState(false);
 
   // Animation State
@@ -106,11 +108,7 @@ export function AuctionDetailsPage() {
       return;
     }
 
-    if (!depositPaid) {
-      setDepositDialogOpen(true);
-      return;
-    }
-
+    // Validate bid amount first
     const currentBid = car?.current_bid || car?.start_bid || 0;
     const amount = parseFloat(bidAmount);
 
@@ -127,12 +125,35 @@ export function AuctionDetailsPage() {
       fetchCarDetails();
     } catch (error: any) {
       console.error("Error placing bid:", error);
-      const message = error.response?.data?.error || "حدث خطأ أثناء تقديم المزايدة";
+      
+      // Check if payment is required (402 status)
+      if (error.response?.status === 402 || error.response?.data?.payment_required) {
+        toast.error("يجب دفع رسوم الاشتراك (1500 ريال) قبل المزايدة");
+        
+        // Show payment confirmation dialog
+        setPaymentDialogOpen(true);
+        return;
+      }
+      
+      const message = error.response?.data?.error || error.response?.data?.message || "حدث خطأ أثناء تقديم المزايدة";
       toast.error(message);
     }
   };
 
   const handleDepositPaid = () => setDepositPaid(true);
+
+  const handleConfirmPayment = async () => {
+    try {
+      const paymentResponse = await api.get(`/pay-bidding-access/?car_id=${id}`);
+      const paymentUrl = paymentResponse.data.payment_url;
+      
+      // Redirect to Tap payment
+      window.location.href = paymentUrl;
+    } catch (paymentError) {
+      console.error('Payment initiation error:', paymentError);
+      toast.error('حدث خطأ أثناء بدء عملية الدفع');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -474,6 +495,11 @@ export function AuctionDetailsPage() {
         open={depositDialogOpen}
         onOpenChange={setDepositDialogOpen}
         onDepositPaid={handleDepositPaid}
+      />
+      <PaymentConfirmDialog
+        open={paymentDialogOpen}
+        onOpenChange={setPaymentDialogOpen}
+        onConfirm={handleConfirmPayment}
       />
     </div>
   );

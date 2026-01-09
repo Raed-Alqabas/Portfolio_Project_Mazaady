@@ -31,6 +31,7 @@ class Payment(models.Model):
     PURPOSE_CHOICES = [
         ("ENTRY_FEE", "Entry Fee"),
         ("FINAL_CHARGE", "Final Charge"),
+        ("BIDDING_ACCESS", "Bidding Access"),  # One-time global payment
     ]
 
     STATUS_CHOICES = [
@@ -41,7 +42,8 @@ class Payment(models.Model):
     ]
 
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    auction = models.ForeignKey("Mazaady", on_delete=models.CASCADE)
+    auction = models.ForeignKey("Mazaady", on_delete=models.CASCADE, null=True, blank=True)
+    car = models.ForeignKey("Car", on_delete=models.SET_NULL, null=True, blank=True)
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     purpose = models.CharField(max_length=20, choices=PURPOSE_CHOICES)

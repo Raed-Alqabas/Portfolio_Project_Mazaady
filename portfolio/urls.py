@@ -3,7 +3,7 @@ from django.conf import settings
 from . import views, api_views
 from .views import test_api
 from django.conf.urls.static import static
-from .views import tap_return, tap_verify, pay_entry_fee
+from .views import tap_return, tap_verify
 
 urlpatterns = [
     path('', views.index, name ='index'),
@@ -11,7 +11,7 @@ urlpatterns = [
     path("auction/live-price/", views.auction_live_price, name="auction-live-price"),
     path("tap/return/", tap_return),
     path("tap/verify/", tap_verify),
-    path("auctions/<int:auction_id>/pay-entry/", pay_entry_fee),    
+    path("pay-bidding-access/", api_views.pay_bidding_access_api, name="pay-bidding-access"),
     
     # Auth API endpoints
     path('auth/login/', api_views.login_api, name='api-login'),

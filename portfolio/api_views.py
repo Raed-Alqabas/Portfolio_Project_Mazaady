@@ -179,6 +179,23 @@ def update_car_api(request, pk):
 @permission_classes([IsAuthenticated])
 def place_bid_api(request, pk):
     from .models import Car, Bid
+    
+    # Check if user has bidding access (paid entry fee)
+    try:
+        profile = request.user.profile
+        if not profile.bidding_access:
+            return Response({
+                'error': 'Payment required',
+                'message': 'You must pay the 1500 SAR entry fee before bidding',
+                'payment_required': True
+            }, status=402)  # 402 Payment Required
+    except Exception as e:
+        return Response({
+            'error': 'Profile not found',
+            'message': 'Please complete your profile first',
+            'payment_required': True
+        }, status=402)
+    
     try:
         car = Car.objects.get(pk=pk, status='ACTIVE')
         amount = request.data.get('amount')
@@ -363,6 +380,105 @@ def my_bids_count_api(request):
     ).values('car').distinct().count()
     
     return Response({'count': active_cars_count})
+
+# Payment for Bidding Access
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def pay_bidding_access_api(request):
+    """One-time payment for global bidding access - 1500 SAR"""
+    import os
+    import requests
+    
+    # Get car_id from query parameter
+    car_id = request.GET.get('car_id')
+    
+    # Check if user already has access
+    try:
+        from .models import Profile
+        profile = request.user.profile
+        if profile.bidding_access:
+            return Response({'error': 'You already have bidding access'}, status=400)
+    except:
+        # Create profile if doesn't exist
+        from .models import Profile
+        profile = Profile.objects.create(
+            user=request.user,
+            phone_number="",
+            phone_country_code="966"
+        )
+    
+    # Fixed 1500 SAR entry fee
+    from decimal import Decimal
+    entry_amount = Decimal("1500.00")
+    
+    from .models import Payment, Car
+    
+    # Get car object if car_id provided
+    car_obj = None
+    if car_id:
+        try:
+            car_obj = Car.objects.get(id=car_id)
+        except Car.DoesNotExist:
+            pass
+    
+    payment = Payment.objects.create(
+        user=request.user,
+        auction=None,  # Global payment, not per auction
+        car=car_obj,  # Store car for redirect
+        purpose="BIDDING_ACCESS",
+        amount=entry_amount,
+        currency="SAR",
+        status="INITIATED",
+    )
+    
+    tap_url = "https://api.tap.company/v2/charges/"
+    
+    headers = {
+        "accept": "application/json",
+        "content-type": "application/json",
+        "Authorization": f"Bearer {os.getenv('TAP_SECRET_KEY')}",
+    }
+    
+    base = "http://127.0.0.1:8000"
+    
+    # Get real user data from profile
+    phone_number = profile.phone_number if profile.phone_number else "500000000"
+    country_code = profile.phone_country_code if profile.phone_country_code else "966"
+    
+    # Clean phone number - remove any non-digits
+    phone_number = ''.join(filter(str.isdigit, phone_number))
+    
+    payload = {
+        "amount": float(payment.amount),
+        "currency": payment.currency,
+        "customer": {
+            "first_name": request.user.first_name if request.user.first_name else request.user.username,
+            "last_name": request.user.last_name if request.user.last_name else "",
+            "email": request.user.email,
+            "phone": {"country_code": country_code, "number": phone_number},
+        },
+        "source": {"id": "src_all"},
+        "redirect": {"url": f"{base}/api/tap/return/?pid={payment.public_id}"},
+        "post": {"url": f"{base}/api/tap/webhook/"},
+        "reference": {"order": str(payment.public_id)},
+    }
+    
+    r = requests.post(tap_url, json=payload, headers=headers)
+    data = r.json()
+    
+    tap_charge_id = data.get("id")
+    payment_url = data.get("transaction", {}).get("url")
+    
+    if not tap_charge_id or not payment_url:
+        payment.status = "FAILED"
+        payment.save(update_fields=["status"])
+        return Response({'error': f"Tap error: {data}"}, status=400)
+    
+    payment.tap_charge_id = tap_charge_id
+    payment.save(update_fields=["tap_charge_id"])
+    
+    # Return the payment URL to frontend for redirect
+    return Response({'payment_url': payment_url})
 
 # User Info Endpoint
 @api_view(['GET'])
