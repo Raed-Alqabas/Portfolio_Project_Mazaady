@@ -17,6 +17,7 @@ urlpatterns = [
     path('auth/login/', api_views.login_api, name='api-login'),
     path('auth/register/', api_views.register_api, name='api-register'),
     path('auth/logout/', api_views.logout_api, name='api-logout'),
+    path('auth/me/', api_views.me_api, name='api-me'),
     
     # Car API endpoints
     path('cars/add/', api_views.add_car_api, name='api-add-car'),
@@ -27,4 +28,14 @@ urlpatterns = [
     path('cars/<int:pk>/bid/', api_views.place_bid_api, name='api-car-place-bid'),
     path('cars/<int:pk>/', api_views.get_car_detail_api, name='api-car-detail'),
     path('cars/<int:pk>/update/', api_views.update_car_api, name='api-update-car'),
+    
+    # Favorites API endpoints
+    path('favorites/', api_views.favorites_list_api, name='api-favorites-list'),
+    path('favorites/<int:pk>/add/', api_views.add_favorite_api, name='api-add-favorite'),
+    path('favorites/<int:pk>/remove/', api_views.remove_favorite_api, name='api-remove-favorite'),
+    path('favorites/count/', api_views.favorites_count_api, name='api-favorites-count'),
+    
+    # My Bids API endpoints
+    path('my-bids/', api_views.my_bids_api, name='api-my-bids'),
+    path('my-bids/count/', api_views.my_bids_count_api, name='api-my-bids-count'),
 ]

@@ -215,3 +215,163 @@ def public_car_detail_api(request, pk):
         return Response(serializer.data)
     except Car.DoesNotExist:
         return Response({'error': 'Car not found or not active'}, status=404)
+
+# Favorites API endpoints
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def favorites_list_api(request):
+    """List all favorites for the authenticated user"""
+    from .models import Favorite
+    favorites = Favorite.objects.filter(user=request.user).select_related('car').prefetch_related('car__images', 'car__bids')
+    
+    data = []
+    for fav in favorites:
+        car = fav.car
+        data.append({
+            'id': car.id,
+            'title': f"{car.year} {car.brand} {car.model}",
+            'currentBid': float(car.current_bid),
+            'startingPrice': float(car.start_bid),
+            'image': car.images.first().image.url if car.images.exists() else None,
+            'status': car.status.lower(),
+            'bids': car.bids_count,
+            'location': car.location,
+            'favorited_at': fav.created_at.isoformat(),
+        })
+    
+    return Response(data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_favorite_api(request, pk):
+    """Add a car to favorites"""
+    from .models import Car, Favorite
+    try:
+        car = Car.objects.get(pk=pk)
+        favorite, created = Favorite.objects.get_or_create(user=request.user, car=car)
+        
+        if created:
+            return Response({'message': 'Added to favorites'}, status=201)
+        else:
+            return Response({'message': 'Already in favorites'}, status=200)
+    except Car.DoesNotExist:
+        return Response({'error': 'Car not found'}, status=404)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def remove_favorite_api(request, pk):
+    """Remove a car from favorites"""
+    from .models import Car, Favorite
+    try:
+        car = Car.objects.get(pk=pk)
+        favorite = Favorite.objects.filter(user=request.user, car=car).first()
+        
+        if favorite:
+            favorite.delete()
+            return Response({'message': 'Removed from favorites'}, status=200)
+        else:
+            return Response({'error': 'Not in favorites'}, status=404)
+    except Car.DoesNotExist:
+        return Response({'error': 'Car not found'}, status=404)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def favorites_count_api(request):
+    """Get count of favorites for notification badge"""
+    from .models import Favorite
+    count = Favorite.objects.filter(user=request.user).count()
+    return Response({'count': count})
+
+# My Bids API endpoints
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_bids_api(request):
+    """List all bids for the authenticated user"""
+    from .models import Bid
+    from django.db.models import Max
+    
+    user_bids = Bid.objects.filter(user=request.user).select_related('car').prefetch_related('car__images', 'car__bids')
+    
+    # Group bids by car
+    cars_bid_on = {}
+    for bid in user_bids:
+        car_id = bid.car.id
+        if car_id not in cars_bid_on:
+            cars_bid_on[car_id] = {
+                'car': bid.car,
+                'my_bid': bid.amount,
+                'bid_time': bid.created_at
+            }
+        else:
+            # Keep track of highest bid
+            if bid.amount > cars_bid_on[car_id]['my_bid']:
+                cars_bid_on[car_id]['my_bid'] = bid.amount
+                cars_bid_on[car_id]['bid_time'] = bid.created_at
+    
+    # Format response
+    active_bids = []
+    completed_bids = []
+    
+    for car_id, bid_info in cars_bid_on.items():
+        car = bid_info['car']
+        my_bid = bid_info['my_bid']
+        current_bid = car.current_bid
+        
+        bid_data = {
+            'id': car.id,
+            'title': f"{car.year} {car.brand} {car.model}",
+            'image': car.images.first().image.url if car.images.exists() else None,
+            'myBid': float(my_bid),
+            'currentBid': float(current_bid),
+            'location': car.location,
+        }
+        
+        if car.status == 'ACTIVE':
+            # Determine if user is winning
+            if float(my_bid) >= float(current_bid):
+                bid_data['status'] = 'winning'
+            else:
+                bid_data['status'] = 'outbid'
+            bid_data['timeLeft'] = 'حسب حالة السيارة'  # Placeholder, needs actual auction end time logic
+            active_bids.append(bid_data)
+        else:
+            # Completed auction
+            winner = car.winner
+            if winner and winner.id == request.user.id:
+                bid_data['status'] = 'won'
+            else:
+                bid_data['status'] = 'lost'
+            bid_data['finalBid'] = float(current_bid)
+            bid_data['endDate'] = 'منتهي'  # Placeholder
+            completed_bids.append(bid_data)
+    
+    return Response({
+        'active': active_bids,
+        'completed': completed_bids
+    })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_bids_count_api(request):
+    """Get count of active bids for notification badge"""
+    from .models import Bid, Car
+    
+    # Count distinct cars with ACTIVE status that user has bid on
+    active_cars_count = Bid.objects.filter(
+        user=request.user,
+        car__status='ACTIVE'
+    ).values('car').distinct().count()
+    
+    return Response({'count': active_cars_count})
+
+# User Info Endpoint
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def me_api(request):
+    """Get current user information"""
+    return Response({
+        'username': request.user.username,
+        'email': request.user.email,
+        'first_name': request.user.first_name,
+        'last_name': request.user.last_name,
+    })

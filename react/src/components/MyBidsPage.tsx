@@ -1,53 +1,47 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { Gavel, Clock, Trophy, XCircle, CheckCircle, Heart, Star, Users } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { toast } from "sonner";
+import axios from "../api/axios";
+
+interface BidData {
+  id: number;
+  title: string;
+  image: string;
+  myBid: number;
+  currentBid?: number;
+  finalBid?: number;
+  status: string;
+  timeLeft?: string;
+  endDate?: string;
+  location: string;
+}
 
 export function MyBidsPage() {
-  const activeBids = [
-    {
-      id: 1,
-      title: "تويوتا كامري 2023",
-      image: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=500",
-      myBid: 85000,
-      currentBid: 87000,
-      status: "outbid",
-      timeLeft: "2 ساعات",
-    },
-    {
-      id: 2,
-      title: "مرسيدس E-Class 2022",
-      image: "https://images.unsplash.com/photo-1617531653332-bd46c24f2068?w=500",
-      myBid: 180000,
-      currentBid: 180000,
-      status: "winning",
-      timeLeft: "4 ساعات",
-    },
-  ];
+  const [activeBids, setActiveBids] = useState<BidData[]>([]);
+  const [completedBids, setCompletedBids] = useState<BidData[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const completedBids = [
-    {
-      id: 3,
-      title: "هوندا أكورد 2024",
-      image: "https://images.unsplash.com/photo-1619405399517-d7fce0f13302?w=500",
-      myBid: 95000,
-      finalBid: 98000,
-      status: "lost",
-      endDate: "منذ يومين",
-    },
-    {
-      id: 4,
-      title: "BMW X5 2023",
-      image: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=500",
-      myBid: 220000,
-      finalBid: 220000,
-      status: "won",
-      endDate: "منذ 5 أيام",
-    },
-  ];
+  useEffect(() => {
+    fetchBids();
+  }, []);
+
+  const fetchBids = async () => {
+    try {
+      const response = await axios.get('/my-bids/');
+      setActiveBids(response.data.active || []);
+      setCompletedBids(response.data.completed || []);
+    } catch (error) {
+      console.error('Error fetching bids:', error);
+      toast.error('فشل تحميل المزايدات');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white py-8">

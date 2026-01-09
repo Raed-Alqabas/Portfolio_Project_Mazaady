@@ -1,8 +1,8 @@
-import { Outlet, Link, useLocation } from "react-router";
+import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { Gavel, Car, Home, LogIn, User, LogOut, ClipboardList, Megaphone, Heart, Search, ShoppingCart, Bell, LayoutDashboard } from "lucide-react";
 import { Button } from "./ui/button";
 import { AuthDialog } from "./AuthDialog";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,14 +15,68 @@ import { Avatar, AvatarFallback } from "./ui/avatar";
 import { toast } from "sonner";
 import { Toaster } from "./ui/sonner";
 import logoImage from "../assets/main-logo.png";
+import axios from "../api/axios";
 
 import { logout } from "../api/auth";
 
 export function RootLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [authOpen, setAuthOpen] = useState(false);
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [favoritesCount, setFavoritesCount] = useState(0);
+  const [bidsCount, setBidsCount] = useState(0);
+
+  useEffect(() => {
+    fetchNotificationCounts();
+    // Refresh counts every 30 seconds
+    const interval = setInterval(fetchNotificationCounts, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Restore session on mount
+  useEffect(() => {
+    const token = localStorage.getItem('access');
+    if (token && !user) {
+      fetchUserInfo();
+    }
+  }, []);
+
+  const fetchUserInfo = async () => {
+    try {
+      const response = await axios.get('/auth/me/');
+      setUser({
+        name: response.data.username,
+        email: response.data.email
+      });
+      fetchNotificationCounts();
+    } catch (error) {
+      console.error('Failed to fetch user info:', error);
+      // Token is invalid, clear it
+      localStorage.removeItem('access');
+      localStorage.removeItem('refresh');
+    }
+  };
+
+  const fetchNotificationCounts = async () => {
+    if (!user) {
+      setFavoritesCount(0);
+      setBidsCount(0);
+      return;
+    }
+
+    try {
+      const [favResponse, bidsResponse] = await Promise.all([
+        axios.get('/favorites/count/'),
+        axios.get('/my-bids/count/')
+      ]);
+      setFavoritesCount(favResponse.data.count || 0);
+      setBidsCount(bidsResponse.data.count || 0);
+    } catch (error) {
+      console.error('Error fetching notification counts:', error);
+    }
+  };
 
   const isActive = (path: string) => {
     if (path === "/" && location.pathname === "/") return true;
@@ -32,11 +86,19 @@ export function RootLayout() {
 
   const handleLogin = (userData: { name: string; email: string }) => {
     setUser(userData);
+    fetchNotificationCounts();
   };
 
   const handleLogout = async () => {
     await logout();
     setUser(null);
+    setFavoritesCount(0);
+    setBidsCount(0);
+    
+    // Redirect to home and scroll to top
+    navigate('/');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
     toast.success("تم تسجيل الخروج بنجاح");
   };
 
@@ -76,9 +138,11 @@ export function RootLayout() {
               <Link to="/favorites">
                 <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group">
                   <Heart className="w-6 h-6 text-gray-600 group-hover:text-accent transition-colors" />
-                  <span className="absolute -top-1 -left-1 w-5 h-5 bg-accent text-white text-xs rounded-full flex items-center justify-center">
-                    3
-                  </span>
+                  {favoritesCount > 0 && (
+                    <span className="absolute -top-1 -left-1 w-5 h-5 bg-accent text-white text-xs rounded-full flex items-center justify-center">
+                      {favoritesCount}
+                    </span>
+                  )}
                 </button>
               </Link>
 
@@ -86,9 +150,11 @@ export function RootLayout() {
               <Link to="/my-bids">
                 <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group">
                   <Gavel className="w-6 h-6 text-gray-600 group-hover:text-accent transition-colors" />
-                  <span className="absolute -top-1 -left-1 w-5 h-5 bg-accent text-white text-xs rounded-full flex items-center justify-center">
-                    2
-                  </span>
+                  {bidsCount > 0 && (
+                    <span className="absolute -top-1 -left-1 w-5 h-5 bg-accent text-white text-xs rounded-full flex items-center justify-center">
+                      {bidsCount}
+                    </span>
+                  )}
                 </button>
               </Link>
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -16,6 +17,7 @@ interface AuthDialogProps {
 }
 
 export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -66,12 +68,16 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
         Swal.fire({
           position: "top",
           icon: "success",
-          title: "تم تسجيل الدخول بنجاح! حياك" + response.user.username,
+          title: "تم تسجيل الدخول بنجاح! حياك " + response.user.username,
           showConfirmButton: false,
           timer: 3000
         });
         onOpenChange(false);
         resetForm();
+        
+        // Redirect to home and scroll to top
+        navigate('/');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         // Registration Validation
         if (!formData.firstName || !formData.lastName || !formData.username || !formData.email || !formData.password) {
@@ -127,6 +133,10 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
         });
         onOpenChange(false);
         resetForm();
+        
+        // Redirect to home and scroll to top
+        navigate('/');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (error: any) {
       console.error("Auth error:", error);

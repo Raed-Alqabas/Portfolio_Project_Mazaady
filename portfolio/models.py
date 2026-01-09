@@ -70,6 +70,8 @@ class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     phone_country_code = models.CharField(max_length=5, default="966")
     phone_number = models.CharField(max_length=20)
+    bidding_access = models.BooleanField(default=False)
+    masked_id = models.CharField(max_length=20, blank=True, null=True)
 
     def __str__(self):
         return f"{self.user.username} Profile"
@@ -156,3 +158,15 @@ class Bid(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.amount} on {self.car}"
+
+class Favorite(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favorites')
+    car = models.ForeignKey(Car, on_delete=models.CASCADE, related_name='favorited_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'car')
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.car.title}"
