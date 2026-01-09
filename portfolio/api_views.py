@@ -477,17 +477,248 @@ def pay_bidding_access_api(request):
     payment.tap_charge_id = tap_charge_id
     payment.save(update_fields=["tap_charge_id"])
     
-    # Return the payment URL to frontend for redirect
     return Response({'payment_url': payment_url})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def dashboard_api(request):
+    """
+    Get dashboard statistics and recent activity for authenticated user.
+    Uses precise time-based logic to determine auction status.
+    """
+    from django.db.models import Sum, Q, Max
+    from django.utils import timezone
+    from datetime import timedelta
+    from .models import Bid, Car, Favorite, Payment
+    
+    user = request.user
+    now = timezone.now()
+    
+    # Pre-fetch all cars the user has interacted with (bid or won)
+    user_bids = Bid.objects.filter(user=user).select_related('car')
+    car_ids = user_bids.values_list('car', flat=True).distinct()
+    cars = Car.objects.filter(id__in=car_ids).prefetch_related('bids', 'images')
+    
+    # Initialize Counters
+    active_bids_count = 0
+    won_count = 0
+    total_spending = 0
+    
+    # Add Bidding Access Fees (Membership)
+    membership_fees = Payment.objects.filter(
+        user=user,
+        status='CAPTURED',
+        purpose='BIDDING_ACCESS'
+    ).aggregate(total=Sum('amount'))['total']
+    
+    if membership_fees:
+        total_spending += float(membership_fees)
+    
+    # Logic: It doesn't matter what car.status says, Time is the truth.
+    for car in cars:
+        auction_end = car.created_at + timedelta(days=car.auction_duration)
+        is_ended = now >= auction_end
+        
+        # Get highest bid for this car
+        highest_bid = car.bids.order_by('-amount').first()
+        
+        if not is_ended:
+            # Auction is Active
+            if car.status != 'CLOSED': # Double check just in case manually closed
+                active_bids_count += 1
+        else:
+            # Auction Ended
+            if highest_bid and highest_bid.user == user:
+                won_count += 1
+                total_spending += float(highest_bid.amount)
+    
+    # Favorites
+    
+    # Favorites
+    favorites_count = Favorite.objects.filter(user=user).count()
+    
+    # 2. Recent Bids (Last 3 unique cars bid on)
+    recent_bids_data = []
+    
+    # Get IDs of cars user bid on, ordered by most recent bid
+    # Use annotate to get the latest bid time per car, then order by that
+    recent_car_ids_ordered = Bid.objects.filter(user=user).values('car').annotate(
+        latest_bid_time=Max('created_at')
+    ).order_by('-latest_bid_time')[:5]
+    
+    # Extract just the IDs
+    recent_car_ids = [item['car'] for item in recent_car_ids_ordered]
+    
+    for car_id in recent_car_ids:
+        if len(recent_bids_data) >= 3:
+            break
+            
+        # Find car in our pre-fetched list
+        car = next((c for c in cars if c.id == car_id), None)
+        if not car:
+            continue
+            
+        auction_end = car.created_at + timedelta(days=car.auction_duration)
+        is_ended = now >= auction_end
+        
+        highest_bid = car.bids.order_by('-amount').first()
+        my_max_bid = car.bids.filter(user=user).aggregate(Max('amount'))['amount__max']
+        
+        # Determine Status for Display
+        if is_ended:
+            if highest_bid and highest_bid.user == user:
+                status = 'won'
+                timeLeft = 'منتهي (فائز)'
+            else:
+                status = 'outbid' # or 'lost'
+                timeLeft = 'منتهي'
+        else:
+            if highest_bid and highest_bid.user == user:
+                status = 'active'
+            else:
+                status = 'outbid'
+                
+            # Time Left String
+            time_diff = auction_end - now
+            if time_diff.days > 0:
+                timeLeft = f'{time_diff.days} أيام'
+            elif time_diff.seconds // 3600 > 0:
+                timeLeft = f'{time_diff.seconds // 3600} ساعات'
+            else:
+                timeLeft = f'{(time_diff.seconds // 60) % 60} دقائق'
+                
+        image_url = None
+        if car.images.exists():
+            image_url = request.build_absolute_uri(car.images.first().image.url)
+            
+        recent_bids_data.append({
+            'id': car.id,
+            'title': car.title,
+            'currentBid': float(highest_bid.amount) if highest_bid else float(car.start_bid),
+            'myBid': float(my_max_bid) if my_max_bid else 0,
+            'timeLeft': timeLeft,
+            'status': status,
+            'image': image_url
+        })
+
+    # Recent Activity Flow
+    final_activity = []
+    
+    # 1. Bids
+    last_bids = Bid.objects.filter(user=user).select_related('car').order_by('-created_at')[:5]
+    for bid in last_bids:
+        final_activity.append({
+            'type': 'bid',
+            'timestamp': bid.created_at,
+            'message': f'قمت بالمزايدة على {bid.car.title}',
+            'amount': f'{int(bid.amount):,} ريال'
+        })
+        
+    # 2. Favorites
+    last_favs = Favorite.objects.filter(user=user).select_related('car').order_by('-created_at')[:5]
+    for fav in last_favs:
+        final_activity.append({
+            'type': 'favorite',
+            'timestamp': fav.created_at,
+            'message': f'أضفت {fav.car.title} للمفضلة',
+            'amount': None
+        })
+        
+    # Sort and slice
+    final_activity.sort(key=lambda x: x['timestamp'], reverse=True)
+    final_activity = final_activity[:5]
+    
+    # Format Time
+    formatted_activity = []
+    for item in final_activity:
+        time_diff = now - item['timestamp']
+        if time_diff.days > 0:
+            time_str = f'منذ {time_diff.days} يوم'
+        elif time_diff.seconds // 3600 > 0:
+            time_str = f'منذ {time_diff.seconds // 3600} ساعة'
+        else:
+            mins = time_diff.seconds // 60
+            time_str = 'الآن' if mins < 1 else f'منذ {mins} دقيقة'
+
+        formatted_activity.append({
+            'type': item['type'],
+            'message': item['message'],
+            'time': time_str,
+            'amount': item['amount']
+        })
+
+    
+    # Active Ads
+    active_ads_count = Car.objects.filter(user=user, status='ACTIVE').count()
+    
+    # Rating
+    rating = None
+    if hasattr(user, 'profile'):
+        rating = user.profile.rating
+
+    return Response({
+        'stats': {
+            'activeBids': active_bids_count,
+            'wonAuctions': won_count,
+            'favorites': favorites_count,
+            'totalSpending': total_spending,
+            'activeAds': active_ads_count,
+            'rating': rating
+        },
+        'recentBids': recent_bids_data,
+        'recentActivity': formatted_activity
+    })
 
 # User Info Endpoint
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def me_api(request):
     """Get current user information"""
+    user = request.user
+    profile = getattr(user, 'profile', None)
+    
+    phone = ''
+    if profile:
+        phone = profile.phone_number
+        
     return Response({
-        'username': request.user.username,
-        'email': request.user.email,
-        'first_name': request.user.first_name,
-        'last_name': request.user.last_name,
+        'username': user.username,
+        'email': user.email,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'phone': phone,
+        'date_joined': user.date_joined
     })
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password_api(request):
+    """Change user password"""
+    user = request.user
+    old_password = request.data.get('old_password')
+    new_password = request.data.get('new_password')
+    
+    if not user.check_password(old_password):
+        return Response({'error': 'كلمة المرور الحالية غير صحيحة'}, status=400)
+        
+    user.set_password(new_password)
+    user.save()
+    return Response({'message': 'تم تغيير كلمة المرور بنجاح'})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_profile_api(request):
+    """Update user profile info"""
+    user = request.user
+    user.first_name = request.data.get('first_name', user.first_name)
+    user.last_name = request.data.get('last_name', user.last_name)
+    user.save()
+    
+    # Update phone if provided
+    phone = request.data.get('phone')
+    if phone and hasattr(user, 'profile'):
+        user.profile.phone_number = phone
+        user.profile.save()
+        
+    return Response({'message': 'تم تحديث البيانات بنجاح'})

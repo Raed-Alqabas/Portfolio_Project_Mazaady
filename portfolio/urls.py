@@ -18,6 +18,8 @@ urlpatterns = [
     path('auth/register/', api_views.register_api, name='api-register'),
     path('auth/logout/', api_views.logout_api, name='api-logout'),
     path('auth/me/', api_views.me_api, name='api-me'),
+    path('auth/change-password/', api_views.change_password_api, name='api-change-password'),
+    path('auth/update-profile/', api_views.update_profile_api, name='api-update-profile'),
     
     # Car API endpoints
     path('cars/add/', api_views.add_car_api, name='api-add-car'),
@@ -38,4 +40,7 @@ urlpatterns = [
     # My Bids API endpoints
     path('my-bids/', api_views.my_bids_api, name='api-my-bids'),
     path('my-bids/count/', api_views.my_bids_count_api, name='api-my-bids-count'),
+    
+    # Dashboard
+    path('dashboard/', api_views.dashboard_api, name='api-dashboard'),
 ]

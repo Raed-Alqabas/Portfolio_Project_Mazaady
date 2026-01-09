@@ -1,11 +1,12 @@
 import { Link } from "react-router";
-import { Gavel, Car, TrendingUp, Clock, Shield, Users, Search, MapPin, Phone, Mail, ArrowRight, Star, Award, CheckCircle } from "lucide-react";
+import { Gavel, Car, TrendingUp, Clock, Shield, Users, Search, MapPin, Phone, Mail, ArrowRight, Star, Award, CheckCircle, Heart } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Input } from "./ui/input";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 import { HeroSection } from "./HeroSection";
 import logoImage from "../assets/main-logo.png";
@@ -18,9 +19,22 @@ export function HomePage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [carType, setCarType] = useState("all");
   const [region, setRegion] = useState("all");
+  const [favorites, setFavorites] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     fetchActiveCars();
+    fetchUserFavorites();
+
+    // Listen for favorites changes from other components
+    const handleFavoritesChange = () => {
+      const stored = localStorage.getItem('favorites');
+      if (stored) {
+        setFavorites(new Set<number>(JSON.parse(stored)));
+      }
+    };
+
+    window.addEventListener('favoritesChanged', handleFavoritesChange);
+    return () => window.removeEventListener('favoritesChanged', handleFavoritesChange);
   }, []);
 
   const fetchActiveCars = async () => {
@@ -31,6 +45,62 @@ export function HomePage() {
       console.error("Error fetching active cars:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchUserFavorites = async () => {
+    try {
+      const response = await api.get("/favorites/");
+      const favoriteIds = new Set<number>(response.data.map((fav: any) => fav.car.id));
+      setFavorites(favoriteIds);
+      // Also save to localStorage
+      localStorage.setItem('favorites', JSON.stringify(Array.from(favoriteIds)));
+    } catch (error) {
+      // User might not be logged in, try localStorage
+      const stored = localStorage.getItem('favorites');
+      if (stored) {
+        setFavorites(new Set<number>(JSON.parse(stored)));
+      }
+    }
+  };
+
+  const toggleFavorite = async (carId: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const isFavorited = favorites.has(carId);
+
+    try {
+      if (isFavorited) {
+        await api.delete(`/favorites/${carId}/remove/`);
+        setFavorites(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(carId);
+          // Save to localStorage for persistence
+          localStorage.setItem('favorites', JSON.stringify(Array.from(newSet)));
+          // Notify other components
+          window.dispatchEvent(new Event('favoritesChanged'));
+          return newSet;
+        });
+        toast.success("تمت إزالة السيارة من المفضلة");
+      } else {
+        await api.post(`/favorites/${carId}/add/`);
+        setFavorites(prev => {
+          const newSet = new Set(prev).add(carId);
+          // Save to localStorage for persistence
+          localStorage.setItem('favorites', JSON.stringify(Array.from(newSet)));
+          // Notify other components
+          window.dispatchEvent(new Event('favoritesChanged'));
+          return newSet;
+        });
+        toast.success("تمت إضافة السيارة للمفضلة");
+      }
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        toast.error("يرجى تسجيل الدخول لإضافة المفضلة");
+      } else {
+        toast.error("حدث خطأ، حاول مرة أخرى");
+      }
     }
   };
 
@@ -198,14 +268,26 @@ export function HomePage() {
                       </div>
 
                       {/* Content */}
-                      <div className="bg-white p-4 rounded-b-lg">
+                      <div className="bg-white p-4 rounded-b-lg relative">
                         <h3 className="text-gray-900 font-semibold mb-2 line-clamp-1">{car.title}</h3>
                         <div className="flex items-center justify-between text-xs text-gray-500">
-                          <div className="flex items-center gap-1">
-                            <TrendingUp className="w-3 h-3" />
-                            <span>{car.brand} {car.model}</span>
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-1">
+                              <TrendingUp className="w-3 h-3" />
+                              <span>{car.brand} {car.model}</span>
+                            </div>
+                            <span>{car.year}</span>
                           </div>
-                          <span>{car.year}</span>
+                          
+                          {/* Heart Icon in Footer */}
+                          <button
+                            onClick={(e) => toggleFavorite(car.id, e)}
+                            className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+                          >
+                            <Heart
+                              className={`w-4 h-4 ${favorites.has(car.id) ? 'fill-red-500 text-red-500' : 'text-gray-400'}`}
+                            />
+                          </button>
                         </div>
                       </div>
                     </div>

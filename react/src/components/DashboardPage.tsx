@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { useState, useEffect } from "react";
 import { 
   Gavel, 
   Heart, 
@@ -14,22 +15,51 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
+import axios from "../api/axios";
 
 export function DashboardPage() {
-  const stats = [
+  const [stats, setStats] = useState({
+    activeBids: 0,
+    wonAuctions: 0,
+    favorites: 0,
+    totalSpending: 0
+  });
+  const [recentBids, setRecentBids] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const response = await axios.get('/dashboard/');
+      const data = response.data;
+      setStats(data.stats);
+      setRecentBids(data.recentBids);
+      setRecentActivity(data.recentActivity);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const statCards = [
     {
       title: "مزايداتي النشطة",
-      value: "5",
-      change: "+2",
-      changeType: "increase",
+      value: stats.activeBids.toString(),
+      change: "نشط",
+      changeType: "neutral",
       icon: Gavel,
       color: "blue",
       link: "/my-bids",
     },
     {
       title: "مزادات فزت بها",
-      value: "12",
-      change: "+3",
+      value: stats.wonAuctions.toString(),
+      change: "فوز",
       changeType: "increase",
       icon: Award,
       color: "green",
@@ -37,78 +67,21 @@ export function DashboardPage() {
     },
     {
       title: "المفضلة",
-      value: "8",
-      change: "+1",
-      changeType: "increase",
+      value: stats.favorites.toString(),
+      change: "محفوظ",
+      changeType: "neutral",
       icon: Heart,
       color: "red",
       link: "/favorites",
     },
     {
       title: "إجمالي الإنفاق",
-      value: "850,000 ريال",
-      change: "+120,000",
-      changeType: "increase",
+      value: `${stats.totalSpending.toLocaleString()} ريال`,
+      change: "مجموع",
+      changeType: "neutral",
       icon: DollarSign,
       color: "purple",
       link: "#",
-    },
-  ];
-
-  const recentBids = [
-    {
-      id: 1,
-      title: "تويوتا كامري 2023",
-      currentBid: 85000,
-      myBid: 82000,
-      timeLeft: "3 ساعات",
-      status: "active",
-      image: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=300",
-    },
-    {
-      id: 2,
-      title: "مرسيدس E-Class 2022",
-      currentBid: 180000,
-      myBid: 175000,
-      timeLeft: "1 ساعة",
-      status: "outbid",
-      image: "https://images.unsplash.com/photo-1617531653332-bd46c24f2068?w=300",
-    },
-    {
-      id: 3,
-      title: "BMW X5 2021",
-      currentBid: 210000,
-      myBid: 210000,
-      timeLeft: "منتهي",
-      status: "won",
-      image: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=300",
-    },
-  ];
-
-  const recentActivity = [
-    {
-      type: "bid",
-      message: "قمت بالمزايدة على تويوتا كامري 2023",
-      time: "منذ 5 دقائق",
-      amount: "82,000 ريال",
-    },
-    {
-      type: "outbid",
-      message: "تم التفوق عليك في مرسيدس E-Class 2022",
-      time: "منذ 15 دقيقة",
-      amount: "180,000 ريال",
-    },
-    {
-      type: "favorite",
-      message: "أضفت هوندا أكورد 2024 للمفضلة",
-      time: "منذ ساعة",
-      amount: null,
-    },
-    {
-      type: "won",
-      message: "مبروك! فزت بمزاد BMW X5 2021",
-      time: "منذ ساعتين",
-      amount: "210,000 ريال",
     },
   ];
 
@@ -130,6 +103,12 @@ export function DashboardPage() {
         return (
           <Badge className="bg-green-500/10 text-green-700 border-green-500/20">
             فائز
+          </Badge>
+        );
+      case "closed":
+        return (
+          <Badge className="bg-gray-500/10 text-gray-700 border-gray-500/20">
+            منتهي
           </Badge>
         );
       default:
@@ -170,23 +149,13 @@ export function DashboardPage() {
 
         {/* Stats Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
+          {statCards.map((stat, index) => (
             <Link to={stat.link} key={index}>
               <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className={`w-12 h-12 bg-${stat.color}-100 rounded-xl flex items-center justify-center`}>
                       <stat.icon className={`w-6 h-6 text-${stat.color}-600`} />
-                    </div>
-                    <div className={`flex items-center gap-1 text-sm ${
-                      stat.changeType === "increase" ? "text-green-600" : "text-red-600"
-                    }`}>
-                      {stat.changeType === "increase" ? (
-                        <TrendingUp className="w-4 h-4" />
-                      ) : (
-                        <TrendingDown className="w-4 h-4" />
-                      )}
-                      <span>{stat.change}</span>
                     </div>
                   </div>
                   <div>

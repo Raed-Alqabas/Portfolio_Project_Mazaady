@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { Toaster } from "./ui/sonner";
 import logoImage from "../assets/main-logo.png";
 import axios from "../api/axios";
+import { ScrollToTop } from "./ScrollToTop";
 
 import { logout } from "../api/auth";
 
@@ -32,7 +33,18 @@ export function RootLayout() {
     fetchNotificationCounts();
     // Refresh counts every 30 seconds
     const interval = setInterval(fetchNotificationCounts, 30000);
-    return () => clearInterval(interval);
+    
+    // Listen for real-time favorites changes
+    const handleFavoritesChange = () => {
+      fetchNotificationCounts();
+    };
+    
+    window.addEventListener('favoritesChanged', handleFavoritesChange);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('favoritesChanged', handleFavoritesChange);
+    };
   }, [user]);
 
   // Restore session on mount
@@ -104,6 +116,7 @@ export function RootLayout() {
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
+      <ScrollToTop />
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4">

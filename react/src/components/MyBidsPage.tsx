@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
-import { Gavel, Clock, Trophy, XCircle, CheckCircle, Heart, Star, Users } from "lucide-react";
+import { Gavel, Clock, Trophy, XCircle, CheckCircle, Heart, Users } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { toast } from "sonner";
 import axios from "../api/axios";
+import api from "../api/axios";
 
 interface BidData {
   id: number;
@@ -25,9 +26,22 @@ export function MyBidsPage() {
   const [activeBids, setActiveBids] = useState<BidData[]>([]);
   const [completedBids, setCompletedBids] = useState<BidData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [favorites, setFavorites] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     fetchBids();
+    fetchUserFavorites();
+
+    // Listen for favorites changes
+    const handleFavoritesChange = () => {
+      const stored = localStorage.getItem('favorites');
+      if (stored) {
+        setFavorites(new Set<number>(JSON.parse(stored)));
+      }
+    };
+
+    window.addEventListener('favoritesChanged', handleFavoritesChange);
+    return () => window.removeEventListener('favoritesChanged', handleFavoritesChange);
   }, []);
 
   const fetchBids = async () => {
@@ -40,6 +54,56 @@ export function MyBidsPage() {
       toast.error('فشل تحميل المزايدات');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUserFavorites = async () => {
+    try {
+      const response = await api.get("/favorites/");
+      const favoriteIds = new Set<number>(response.data.map((fav: any) => fav.car.id));
+      setFavorites(favoriteIds);
+      localStorage.setItem('favorites', JSON.stringify(Array.from(favoriteIds)));
+    } catch (error) {
+      const stored = localStorage.getItem('favorites');
+      if (stored) {
+        setFavorites(new Set<number>(JSON.parse(stored)));
+      }
+    }
+  };
+
+  const toggleFavorite = async (carId: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const isFavorited = favorites.has(carId);
+
+    try {
+      if (isFavorited) {
+        await api.delete(`/favorites/${carId}/remove/`);
+        setFavorites(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(carId);
+          localStorage.setItem('favorites', JSON.stringify(Array.from(newSet)));
+          window.dispatchEvent(new Event('favoritesChanged'));
+          return newSet;
+        });
+        toast.success("تمت إزالة السيارة من المفضلة");
+      } else {
+        await api.post(`/favorites/${carId}/add/`);
+        setFavorites(prev => {
+          const newSet = new Set(prev).add(carId);
+          localStorage.setItem('favorites', JSON.stringify(Array.from(newSet)));
+          window.dispatchEvent(new Event('favoritesChanged'));
+          return newSet;
+        });
+        toast.success("تمت إضافة السيارة للمفضلة");
+      }
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        toast.error("يرجى تسجيل الدخول لإضافة المفضلة");
+      } else {
+        toast.error("حدث خطأ، حاول مرة أخرى");
+      }
     }
   };
 
@@ -67,7 +131,7 @@ export function MyBidsPage() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {activeBids.map((bid) => (
                 <Link to={`/auction/${bid.id}`} key={bid.id} className="block group">
-                  <div className="overflow-hidden rounded-lg">
+                  <div className="overflow-hidden rounded-lg border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
                     {/* Image Container */}
                     <div className="relative aspect-video overflow-hidden rounded-t-lg bg-gray-200">
                       <img
@@ -94,12 +158,10 @@ export function MyBidsPage() {
                       
                       {/* Favorite Button */}
                       <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                        }}
+                        onClick={(e) => toggleFavorite(bid.id, e)}
                         className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/95 shadow-md flex items-center justify-center hover:scale-110 transition-transform z-20"
                       >
-                        <Heart className="w-4 h-4 text-gray-700" />
+                        <Heart className={`w-4 h-4 ${favorites.has(bid.id) ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
                       </button>
                       
                       {/* Bottom Info Overlay */}
@@ -111,7 +173,7 @@ export function MyBidsPage() {
                         <div className="text-left">
                           <div className="text-xs opacity-90">Bid</div>
                           <div className="flex items-baseline gap-1">
-                            <span className="text-sm">{bid.currentBid.toLocaleString()} ريال</span>
+                          <span className="font-medium">{(bid.currentBid || 0).toLocaleString()} ريال</span>
                           </div>
                         </div>
                       </div>
@@ -119,22 +181,16 @@ export function MyBidsPage() {
                     
                     {/* Content */}
                     <div className="bg-white p-3 rounded-b-lg">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <h3 className="text-gray-900 text-sm line-clamp-1 flex-1">{bid.title}</h3>
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                          }}
-                          className="flex-shrink-0 mt-0.5"
-                        >
-                          <Star className="w-4 h-4 text-gray-400 hover:text-yellow-500 hover:fill-yellow-500 transition-colors" />
-                        </button>
-                      </div>
-                      <div className="space-y-1 text-xs text-gray-600">
-                        <p>مزايدتي: {bid.myBid.toLocaleString()} ريال</p>
-                        <p className={bid.status === "winning" ? "text-green-600" : "text-red-600"}>
-                          السعر الحالي: {bid.currentBid.toLocaleString()} ريال
-                        </p>
+                      <h3 className="text-gray-900 text-sm font-semibold mb-2 line-clamp-1 text-right">{bid.title}</h3>
+                      <div className="space-y-1 text-xs text-gray-600 text-right">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium">{bid.myBid.toLocaleString()} ريال</span>
+                          <span>مزايدتي:</span>
+                        </div>
+                        <div className={`flex items-center justify-between gap-2 ${bid.status === "winning" ? "text-green-600" : "text-red-600"}`}>
+                          <span className="font-medium">{(bid.currentBid || 0).toLocaleString()} ريال</span>
+                          <span>السعر الحالي:</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -147,7 +203,7 @@ export function MyBidsPage() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {completedBids.map((bid) => (
                 <Link to={`/auction/${bid.id}`} key={bid.id} className="block group">
-                  <div className="overflow-hidden rounded-lg">
+                  <div className="overflow-hidden rounded-lg border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
                     {/* Image Container */}
                     <div className="relative aspect-video overflow-hidden rounded-t-lg bg-gray-200">
                       <img
@@ -171,13 +227,21 @@ export function MyBidsPage() {
                         </Badge>
                       )}
                       
+                      {/* Favorite Button */}
+                      <button
+                        onClick={(e) => toggleFavorite(bid.id, e)}
+                        className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/95 shadow-md flex items-center justify-center hover:scale-110 transition-transform z-20"
+                      >
+                        <Heart className={`w-4 h-4 ${favorites.has(bid.id) ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
+                      </button>
+                      
                       {/* Bottom Info Overlay */}
                       <div className="absolute bottom-0 left-0 right-0 p-3 flex items-end justify-between text-white z-10">
                         <div className="text-sm">{bid.endDate}</div>
                         <div className="text-left">
                           <div className="text-xs opacity-90">Final Bid</div>
                           <div className="flex items-baseline gap-1">
-                            <span className="text-sm">{bid.finalBid.toLocaleString()} ريال</span>
+                            <span className="text-sm">{(bid.finalBid || 0).toLocaleString()} ريال</span>
                           </div>
                         </div>
                       </div>
@@ -185,22 +249,16 @@ export function MyBidsPage() {
                     
                     {/* Content */}
                     <div className="bg-white p-3 rounded-b-lg">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <h3 className="text-gray-900 text-sm line-clamp-1 flex-1">{bid.title}</h3>
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                          }}
-                          className="flex-shrink-0 mt-0.5"
-                        >
-                          <Star className="w-4 h-4 text-gray-400 hover:text-yellow-500 hover:fill-yellow-500 transition-colors" />
-                        </button>
-                      </div>
-                      <div className="space-y-1 text-xs text-gray-600">
-                        <p>مزايدتي: {bid.myBid.toLocaleString()} ريال</p>
-                        <p className={bid.status === "won" ? "text-green-600" : "text-gray-600"}>
-                          السعر النهائي: {bid.finalBid.toLocaleString()} ريال
-                        </p>
+                      <h3 className="text-gray-900 text-sm font-semibold mb-2 line-clamp-1 text-right">{bid.title}</h3>
+                      <div className="space-y-1 text-xs text-gray-600 text-right">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium">{bid.myBid.toLocaleString()} ريال</span>
+                          <span>مزايدتي:</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 text-gray-800">
+                          <span className="font-medium">{(bid.finalBid || 0).toLocaleString()} ريال</span>
+                          <span>السعر النهائي:</span>
+                        </div>
                       </div>
                     </div>
                   </div>
