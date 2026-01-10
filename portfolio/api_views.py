@@ -722,3 +722,60 @@ def update_profile_api(request):
         user.profile.save()
         
     return Response({'message': 'تم تحديث البيانات بنجاح'})
+
+
+# Notifications API
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def notifications_api(request):
+    """Get user notifications"""
+    from .models import Notification
+    user = request.user
+    notifications = Notification.objects.filter(user=user)[:50]  # Last 50 notifications
+    
+    data = []
+    for notif in notifications:
+        data.append({
+            'id': notif.id,
+            'type': notif.notification_type,
+            'title': notif.title,
+            'message': notif.message,
+            'link': notif.link,
+            'is_read': notif.is_read,
+            'created_at': notif.created_at
+        })
+    
+    return Response({'notifications': data})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def notifications_count_api(request):
+    """Get unread notifications count"""
+    from .models import Notification
+    count = Notification.objects.filter(user=request.user, is_read=False).count()
+    return Response({'unread_count': count})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_notification_read_api(request, notification_id):
+    """Mark a notification as read"""
+    from .models import Notification
+    try:
+        notification = Notification.objects.get(id=notification_id, user=request.user)
+        notification.is_read = True
+        notification.save()
+        return Response({'message': 'تم وضع علامة مقروء'})
+    except Notification.DoesNotExist:
+        return Response({'error': 'الإشعار غير موجود'}, status=404)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_all_notifications_read_api(request):
+    """Mark all user notifications as read"""
+    from .models import Notification
+    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return Response({'message': 'تم وضع علامة مقروء على جميع الإشعارات'})
+

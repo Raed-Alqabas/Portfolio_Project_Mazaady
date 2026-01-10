@@ -43,4 +43,10 @@ urlpatterns = [
     
     # Dashboard
     path('dashboard/', api_views.dashboard_api, name='api-dashboard'),
+    
+    # Notifications
+    path('notifications/', api_views.notifications_api, name='api-notifications'),
+    path('notifications/count/', api_views.notifications_count_api, name='api-notifications-count'),
+    path('notifications/<int:notification_id>/read/', api_views.mark_notification_read_api, name='api-mark-notification-read'),
+    path('notifications/mark-all-read/', api_views.mark_all_notifications_read_api, name='api-mark-all-notifications-read'),
 ]
