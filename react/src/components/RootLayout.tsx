@@ -99,6 +99,7 @@ export function RootLayout() {
 
   const handleLogin = (userData: { name: string; email: string }) => {
     setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
     fetchNotificationCounts();
   };
 
@@ -107,6 +108,7 @@ export function RootLayout() {
     setUser(null);
     setFavoritesCount(0);
     setBidsCount(0);
+    localStorage.removeItem('user');
     
     // Redirect to home and scroll to top
     navigate('/');
