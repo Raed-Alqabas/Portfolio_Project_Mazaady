@@ -14,6 +14,7 @@ import { TermsPage } from "../components/TermsPage";
 import { PrivacyPage } from "../components/PrivacyPage";
 import { NotificationsPage } from "../components/NotificationsPage";
 import { RootLayout } from "../components/RootLayout";
+import { AdminDashboardPage } from "../components/AdminDashboardPage";
 
 export const router = createBrowserRouter([
   {

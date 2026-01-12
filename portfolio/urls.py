@@ -49,4 +49,7 @@ urlpatterns = [
     path('notifications/count/', api_views.notifications_count_api, name='api-notifications-count'),
     path('notifications/<int:notification_id>/read/', api_views.mark_notification_read_api, name='api-mark-notification-read'),
     path('notifications/mark-all-read/', api_views.mark_all_notifications_read_api, name='api-mark-all-notifications-read'),
+    
+    # Admin Dashboard
+    path('admin/dashboard/', api_views.admin_dashboard_api, name='api-admin-dashboard'),
 ]

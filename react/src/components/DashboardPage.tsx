@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import axios from "../api/axios";
+import { AdminDashboardPage } from "./AdminDashboardPage";
 
 export function DashboardPage() {
   const [stats, setStats] = useState({
@@ -27,10 +28,27 @@ export function DashboardPage() {
   const [recentBids, setRecentBids] = useState<any[]>([]);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [username, setUsername] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchDashboardData();
+    checkUserAndFetchData();
   }, []);
+
+  const checkUserAndFetchData = async () => {
+    try {
+      // Check current user
+      const meResponse = await axios.get('/auth/me/');
+      setUsername(meResponse.data.username);
+      
+      // If not admin, fetch regular dashboard data
+      if (meResponse.data.username !== 'admin') {
+        await fetchDashboardData();
+      }
+    } catch (error) {
+      console.error('Error checking user:', error);
+      setLoading(false);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -45,6 +63,11 @@ export function DashboardPage() {
       setLoading(false);
     }
   };
+
+  // If admin user, render admin dashboard
+  if (username === 'admin') {
+    return <AdminDashboardPage />;
+  }
 
   const statCards = [
     {

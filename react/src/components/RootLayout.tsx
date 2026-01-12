@@ -76,16 +76,21 @@ export function RootLayout() {
     if (!user) {
       setFavoritesCount(0);
       setBidsCount(0);
+      setNotificationCount(0);
       return;
     }
 
     try {
-      const [favResponse, bidsResponse] = await Promise.all([
+      const [favResponse, bidsResponse, notifResponse] = await Promise.all([
         axios.get('/favorites/count/'),
-        axios.get('/my-bids/count/')
+        axios.get('/my-bids/count/'),
+        axios.get('/notifications/count/')
       ]);
       setFavoritesCount(favResponse.data.count || 0);
       setBidsCount(bidsResponse.data.count || 0);
+      const notifCount = notifResponse.data.count || 0;
+      console.log('Notification count fetched:', notifCount);
+      setNotificationCount(notifCount);
     } catch (error) {
       console.error('Error fetching notification counts:', error);
     }
@@ -108,6 +113,7 @@ export function RootLayout() {
     setUser(null);
     setFavoritesCount(0);
     setBidsCount(0);
+    setNotificationCount(0);
     localStorage.removeItem('user');
     
     // Redirect to home and scroll to top
@@ -178,11 +184,14 @@ export function RootLayout() {
               <Link to="/notifications">
                 <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group">
                   <Bell className="w-6 h-6 text-gray-600 group-hover:text-accent transition-colors" />
-                  {notificationCount > 0 && (
-                    <span className="absolute -top-1 -left-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                      {notificationCount > 99 ? '99+' : notificationCount}
-                    </span>
-                  )}
+                  {(() => {
+                    console.log('Current notificationCount:', notificationCount);
+                    return notificationCount > 0 && (
+                      <span className="absolute -top-1 -left-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse shadow-lg">
+                        {notificationCount > 99 ? '99+' : notificationCount}
+                      </span>
+                    );
+                  })()}
                 </button>
               </Link>
 

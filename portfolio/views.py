@@ -69,7 +69,7 @@ def pay_bidding_access_api(request):
             "email": request.user.email,
             "phone": {"country_code": 966, "number": 500000000},
         },
-        "source": {"id": "src_all"},
+        "source": {"id": "src_card"},
         "redirect": {"url": f"{base}/api/tap/return/?pid={payment.public_id}"},
         "post": {"url": f"{base}/api/tap/webhook/"},
         "reference": {"order": str(payment.public_id)},
@@ -123,9 +123,19 @@ def tap_return(request):
         # Grant bidding access for global payments
         if payment.purpose == "BIDDING_ACCESS":
             try:
+                from .models import Notification
                 profile = payment.user.profile
                 profile.bidding_access = True
                 profile.save(update_fields=["bidding_access"])
+                
+                # Create payment confirmation notification
+                Notification.objects.create(
+                    user=payment.user,
+                    notification_type='PAYMENT_CONFIRMED',
+                    title='تم تأكيد الدفع',
+                    message=f'تم تأكيد دفع رسوم الاشتراك ({payment.amount} ريال). يمكنك الآن المزايدة على جميع السيارات!',
+                    link='/'
+                )
                 
                 # Redirect to car page if available, otherwise home
                 if payment.car:

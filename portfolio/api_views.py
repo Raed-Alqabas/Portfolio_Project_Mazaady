@@ -178,7 +178,7 @@ def update_car_api(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def place_bid_api(request, pk):
-    from .models import Car, Bid
+    from .models import Car, Bid, Notification
     
     # Check if user has bidding access (paid entry fee)
     try:
@@ -210,8 +210,33 @@ def place_bid_api(request, pk):
             
         if amount <= car.current_bid:
             return Response({'error': 'Bid must be higher than current price'}, status=400)
-            
+        
+        # Get previous highest bidder before creating new bid
+        previous_highest_bid = car.bids.order_by('-amount').first()
+        
+        # Create the new bid
         Bid.objects.create(car=car, user=request.user, amount=amount)
+        
+        # Notify previous highest bidder that they were outbid
+        if previous_highest_bid and previous_highest_bid.user != request.user:
+            Notification.objects.create(
+                user=previous_highest_bid.user,
+                notification_type='OUTBID',
+                title='تم تجاوز عرضك',
+                message=f'تم تجاوز عرضك على {car.title}. العرض الجديد: {amount:,.0f} ريال',
+                link=f'/auction/{car.id}'
+            )
+        
+        # Notify car owner of new bid (if it's not their own bid)
+        if car.user != request.user:
+            Notification.objects.create(
+                user=car.user,
+                notification_type='NEW_BID',
+                title='عرض جديد على سيارتك',
+                message=f'تم تقديم عرض جديد على {car.title} بقيمة {amount:,.0f} ريال',
+                link=f'/auction/{car.id}'
+            )
+        
         return Response({'message': 'Bid placed successfully'})
     except Car.DoesNotExist:
         return Response({'error': 'Car not found or not active'}, status=404)
@@ -249,7 +274,7 @@ def favorites_list_api(request):
             'title': f"{car.year} {car.brand} {car.model}",
             'currentBid': float(car.current_bid),
             'startingPrice': float(car.start_bid),
-            'image': car.images.first().image.url if car.images.exists() else None,
+            'image': request.build_absolute_uri(car.images.first().image.url) if car.images.exists() else None,
             'status': car.status.lower(),
             'bids': car.bids_count,
             'location': car.location,
@@ -337,7 +362,7 @@ def my_bids_api(request):
         bid_data = {
             'id': car.id,
             'title': f"{car.year} {car.brand} {car.model}",
-            'image': car.images.first().image.url if car.images.exists() else None,
+            'image': request.build_absolute_uri(car.images.first().image.url) if car.images.exists() else None,
             'myBid': float(my_bid),
             'currentBid': float(current_bid),
             'location': car.location,
@@ -457,7 +482,7 @@ def pay_bidding_access_api(request):
             "email": request.user.email,
             "phone": {"country_code": country_code, "number": phone_number},
         },
-        "source": {"id": "src_all"},
+        "source": {"id": "src_card"},
         "redirect": {"url": f"{base}/api/tap/return/?pid={payment.public_id}"},
         "post": {"url": f"{base}/api/tap/webhook/"},
         "reference": {"order": str(payment.public_id)},
@@ -754,7 +779,7 @@ def notifications_count_api(request):
     """Get unread notifications count"""
     from .models import Notification
     count = Notification.objects.filter(user=request.user, is_read=False).count()
-    return Response({'unread_count': count})
+    return Response({'count': count})
 
 
 @api_view(['POST'])
@@ -779,3 +804,208 @@ def mark_all_notifications_read_api(request):
     Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
     return Response({'message': 'تم وضع علامة مقروء على جميع الإشعارات'})
 
+
+# Admin Dashboard API
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_dashboard_api(request):
+    """
+    Admin-only dashboard with system-wide metrics.
+    Only accessible to admin user.
+    """
+    from django.db.models import Count, Sum, Q
+    from django.utils import timezone
+    from datetime import timedelta
+    from .models import Car, Bid, Payment, Profile, Notification
+    
+    # Check if user is admin
+    if request.user.username != 'admin':
+        return Response({'error': 'Access denied. Admin only.'}, status=403)
+    
+    now = timezone.now()
+    
+    # USER ACTIVITY METRICS
+    total_users = User.objects.count()
+    
+    # New users in last 7 days
+    seven_days_ago = now - timedelta(days=7)
+    new_users = User.objects.filter(date_joined__gte=seven_days_ago).count()
+    
+    # Active users (users who have placed bids in the last 30 days)
+    thirty_days_ago = now - timedelta(days=30)
+    active_users = User.objects.filter(
+        bids__created_at__gte=thirty_days_ago
+    ).distinct().count()
+    
+    # Users with bidding access
+    users_with_access = Profile.objects.filter(bidding_access=True).count()
+    
+    # AUCTION LIFECYCLE METRICS
+    total_cars = Car.objects.count()
+    active_cars = Car.objects.filter(status='ACTIVE').count()
+    closed_cars = Car.objects.filter(status='CLOSED').count()
+    pending_cars = Car.objects.filter(status='IN_REVIEW').count()
+    rejected_cars = Car.objects.filter(status='REJECTED').count()
+    
+    # BIDDING VOLUME METRICS
+    total_bids = Bid.objects.count()
+    
+    # Bids today
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    bids_today = Bid.objects.filter(created_at__gte=today_start).count()
+    
+    # Bids this week
+    bids_this_week = Bid.objects.filter(created_at__gte=seven_days_ago).count()
+    
+    # Top bidders (users with most bids)
+    top_bidders = Bid.objects.values('user__username').annotate(
+        bid_count=Count('id'),
+        total_amount=Sum('amount')
+    ).order_by('-bid_count')[:5]
+    
+    top_bidders_data = []
+    for bidder in top_bidders:
+        top_bidders_data.append({
+            'username': bidder['user__username'],
+            'bidCount': bidder['bid_count'],
+            'totalAmount': float(bidder['total_amount']) if bidder['total_amount'] else 0
+        })
+    
+    # REVENUE METRICS
+    # Total revenue from bidding access payments
+    bidding_revenue = Payment.objects.filter(
+        purpose='BIDDING_ACCESS',
+        status='CAPTURED'
+    ).aggregate(total=Sum('amount'))['total']
+    bidding_revenue = float(bidding_revenue) if bidding_revenue else 0
+    
+    # Total revenue from all captured payments
+    total_revenue = Payment.objects.filter(
+        status='CAPTURED'
+    ).aggregate(total=Sum('amount'))['total']
+    total_revenue = float(total_revenue) if total_revenue else 0
+    
+    # Revenue today
+    revenue_today = Payment.objects.filter(
+        status='CAPTURED',
+        created_at__gte=today_start
+    ).aggregate(total=Sum('amount'))['total']
+    revenue_today = float(revenue_today) if revenue_today else 0
+    
+    # RECENT ACTIVITY
+    # Latest user registrations
+    recent_users = User.objects.order_by('-date_joined')[:5]
+    recent_users_data = []
+    for user in recent_users:
+        time_diff = now - user.date_joined
+        if time_diff.days > 0:
+            time_str = f'{time_diff.days} يوم'
+        elif time_diff.seconds // 3600 > 0:
+            time_str = f'{time_diff.seconds // 3600} ساعة'
+        else:
+            mins = time_diff.seconds // 60
+            time_str = 'الآن' if mins < 1 else f'{mins} دقيقة'
+        
+        recent_users_data.append({
+            'username': user.username,
+            'email': user.email,
+            'joined': time_str
+        })
+    
+    # Latest bids
+    recent_bids = Bid.objects.select_related('user', 'car').order_by('-created_at')[:10]
+    recent_bids_data = []
+    for bid in recent_bids:
+        time_diff = now - bid.created_at
+        if time_diff.days > 0:
+            time_str = f'{time_diff.days} يوم'
+        elif time_diff.seconds // 3600 > 0:
+            time_str = f'{time_diff.seconds // 3600} ساعة'
+        else:
+            mins = time_diff.seconds // 60
+            time_str = 'الآن' if mins < 1 else f'{mins} دقيقة'
+        
+        recent_bids_data.append({
+            'user': bid.user.username,
+            'car': bid.car.title,
+            'amount': float(bid.amount),
+            'time': time_str
+        })
+    
+    # Latest auctions (cars)
+    recent_cars = Car.objects.select_related('user').order_by('-created_at')[:5]
+    recent_cars_data = []
+    for car in recent_cars:
+        time_diff = now - car.created_at
+        if time_diff.days > 0:
+            time_str = f'{time_diff.days} يوم'
+        elif time_diff.seconds // 3600 > 0:
+            time_str = f'{time_diff.seconds // 3600} ساعة'
+        else:
+            mins = time_diff.seconds // 60
+            time_str = 'الآن' if mins < 1 else f'{mins} دقيقة'
+        
+        recent_cars_data.append({
+            'title': car.title,
+            'seller': car.user.username,
+            'status': car.status,
+            'time': time_str
+        })
+    
+    # NOTIFICATION STATS
+    total_notifications = Notification.objects.count()
+    unread_notifications = Notification.objects.filter(is_read=False).count()
+    
+    # BID TRENDS (last 7 days)
+    bid_trends = []
+    for i in range(6, -1, -1):
+        day = now - timedelta(days=i)
+        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        
+        day_bids = Bid.objects.filter(
+            created_at__gte=day_start,
+            created_at__lt=day_end
+        ).count()
+        
+        bid_trends.append({
+            'date': day_start.strftime('%Y-%m-%d'),
+            'count': day_bids
+        })
+    
+    return Response({
+        'userActivity': {
+            'totalUsers': total_users,
+            'newUsers': new_users,
+            'activeUsers': active_users,
+            'usersWithAccess': users_with_access
+        },
+        'auctionLifecycle': {
+            'totalCars': total_cars,
+            'activeCars': active_cars,
+            'closedCars': closed_cars,
+            'pendingCars': pending_cars,
+            'rejectedCars': rejected_cars
+        },
+        'biddingVolume': {
+            'totalBids': total_bids,
+            'bidsToday': bids_today,
+            'bidsThisWeek': bids_this_week,
+            'topBidders': top_bidders_data
+        },
+        'revenue': {
+            'totalRevenue': total_revenue,
+            'biddingRevenue': bidding_revenue,
+            'revenueToday': revenue_today
+        },
+        'recentActivity': {
+            'recentUsers': recent_users_data,
+            'recentBids': recent_bids_data,
+            'recentCars': recent_cars_data
+        },
+        'notifications': {
+            'total': total_notifications,
+            'unread': unread_notifications
+        },
+        'bidTrends': bid_trends
+    })
