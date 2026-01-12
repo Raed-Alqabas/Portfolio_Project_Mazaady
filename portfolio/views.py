@@ -15,69 +15,83 @@ import requests
 from .models import Mazaady, Payment, AuctionEntry
 from django.utils import timezone
 from decimal import Decimal, ROUND_HALF_UP
-
-
-def pay_entry_fee(request, auction_id):
-    payer_email = request.GET.get("email")
-    if not payer_email:
-        return HttpResponse("Missing email. Example: ?email=test@test.com", status=400)
-
-    auction = get_object_or_404(Mazaady, id=auction_id)
-
-    # 2% refundable entry deposit based on starting price
-    entry_amount = (auction.starting_price * Decimal("0.02")).quantize(
-        Decimal("0.01"), rounding=ROUND_HALF_UP
-    )
-
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def pay_bidding_access_api(request):
+    """One-time payment for global bidding access - 1500 SAR"""
+    
+    # Check if user already has access
+    try:
+        from .models import Profile
+        profile = request.user.profile
+        if profile.bidding_access:
+            return Response({'error': 'You already have bidding access'}, status=400)
+    except:
+        # Create profile if doesn't exist
+        Profile.objects.create(
+            user=request.user,
+            phone_number="",
+            phone_country_code="966"
+        )
+    
+    # Fixed 1500 SAR entry fee
+    entry_amount = Decimal("1500.00")
+    
+    from .models import Payment
     payment = Payment.objects.create(
-        auction=auction,
-        payer_email=payer_email,
-        purpose="ENTRY_FEE",
+        user=request.user,
+        auction=None,  # Global payment, not per auction
+        purpose="BIDDING_ACCESS",
         amount=entry_amount,
         currency="SAR",
         status="INITIATED",
     )
-
+    
     tap_url = "https://api.tap.company/v2/charges/"
-
+    
     headers = {
         "accept": "application/json",
         "content-type": "application/json",
         "Authorization": f"Bearer {os.getenv('TAP_SECRET_KEY')}",
     }
-
+    
     base = "http://127.0.0.1:8000"
-
+    
     payload = {
         "amount": float(payment.amount),
         "currency": payment.currency,
         "customer": {
-            "first_name": "Mazady",
-            "last_name": "Bidder",
-            "email": payer_email,
+            "first_name": request.user.first_name or "Mazady",
+            "last_name": request.user.last_name or "User",
+            "email": request.user.email,
             "phone": {"country_code": 966, "number": 500000000},
         },
-        "source": {"id": "src_all"},
-        "redirect": {"url": f"{base}/tap/return/?pid={payment.public_id}"},
-        "post": {"url": f"{base}/tap/webhook/"},
+        "source": {"id": "src_card"},
+        "redirect": {"url": f"{base}/api/tap/return/?pid={payment.public_id}"},
+        "post": {"url": f"{base}/api/tap/webhook/"},
         "reference": {"order": str(payment.public_id)},
     }
-
+    
     r = requests.post(tap_url, json=payload, headers=headers)
     data = r.json()
-
+    
     tap_charge_id = data.get("id")
     payment_url = data.get("transaction", {}).get("url")
-
+    
     if not tap_charge_id or not payment_url:
         payment.status = "FAILED"
         payment.save(update_fields=["status"])
-        return HttpResponse(f"Tap error: {data}", status=400)
-
+        return Response({'error': f"Tap error: {data}"}, status=400)
+    
     payment.tap_charge_id = tap_charge_id
     payment.save(update_fields=["tap_charge_id"])
+    
+    # Return the payment URL to frontend for redirect
+    return Response({'payment_url': payment_url})
 
-    return redirect(payment_url)
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
@@ -106,9 +120,35 @@ def tap_return(request):
         payment.status = "CAPTURED"
         payment.save(update_fields=["status"])
 
+        # Grant bidding access for global payments
+        if payment.purpose == "BIDDING_ACCESS":
+            try:
+                from .models import Notification
+                profile = payment.user.profile
+                profile.bidding_access = True
+                profile.save(update_fields=["bidding_access"])
+                
+                # Create payment confirmation notification
+                Notification.objects.create(
+                    user=payment.user,
+                    notification_type='PAYMENT_CONFIRMED',
+                    title='تم تأكيد الدفع',
+                    message=f'تم تأكيد دفع رسوم الاشتراك ({payment.amount} ريال). يمكنك الآن المزايدة على جميع السيارات!',
+                    link='/'
+                )
+                
+                # Redirect to car page if available, otherwise home
+                if payment.car:
+                    return redirect(f'http://localhost:3000/auction/{payment.car.id}')
+                else:
+                    return redirect('http://localhost:3000/')
+            except Exception as e:
+                return HttpResponse(f"⚠️ Payment captured but failed to grant access: {e}")
+        
+        # Handle auction-specific entry fees
         entry, _ = AuctionEntry.objects.get_or_create(
             auction=payment.auction,
-            payer_email=payment.payer_email,
+            user=payment.user,
         )
         entry.is_paid = True
         entry.paid_at = timezone.now()

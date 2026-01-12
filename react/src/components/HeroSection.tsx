@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { toast } from "sonner";
 import api from "../api/axios";
 import { calculateTimeRemaining, calculateTimeUntilStart } from "../utils/timeUtils";
 
@@ -18,6 +19,7 @@ export function HeroSection() {
   const [featuredCars, setFeaturedCars] = useState<any[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   useEffect(() => {
@@ -36,6 +38,18 @@ export function HeroSection() {
     };
 
     fetchFeaturedCars();
+    fetchUserFavorites();
+
+    // Listen for favorites changes from other components
+    const handleFavoritesChange = () => {
+      const stored = localStorage.getItem('favorites');
+      if (stored) {
+        setFavorites(new Set<number>(JSON.parse(stored)));
+      }
+    };
+
+    window.addEventListener('favoritesChanged', handleFavoritesChange);
+    return () => window.removeEventListener('favoritesChanged', handleFavoritesChange);
   }, []);
 
   // Update time every second for live countdown
@@ -64,6 +78,58 @@ export function HeroSection() {
   const prevSlide = () => {
     if (featuredCars.length === 0) return;
     setCurrentSlide((prev) => (prev - 1 + featuredCars.length) % featuredCars.length);
+  };
+
+  const toggleFavorite = async (carId: number, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    const isFavorited = favorites.has(carId);
+
+    try {
+      if (isFavorited) {
+        await api.delete(`/favorites/${carId}/remove/`);
+        setFavorites(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(carId);
+          localStorage.setItem('favorites', JSON.stringify(Array.from(newSet)));
+          window.dispatchEvent(new Event('favoritesChanged'));
+          return newSet;
+        });
+        toast.success("تمت إزالة السيارة من المفضلة");
+      } else {
+        await api.post(`/favorites/${carId}/add/`);
+        setFavorites(prev => {
+          const newSet = new Set(prev).add(carId);
+          localStorage.setItem('favorites', JSON.stringify(Array.from(newSet)));
+          window.dispatchEvent(new Event('favoritesChanged'));
+          return newSet;
+        });
+        toast.success("تمت إضافة السيارة للمفضلة");
+      }
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        toast.error("يرجى تسجيل الدخول لإضافة المفضلة");
+      } else {
+        toast.error("حدث خطأ، حاول مرة أخرى");
+      }
+    }
+  };
+
+  const fetchUserFavorites = async () => {
+    try {
+      const response = await api.get("/favorites/");
+      const favoriteIds = new Set<number>(response.data.map((fav: any) => fav.car.id));
+      setFavorites(favoriteIds);
+      localStorage.setItem('favorites', JSON.stringify(Array.from(favoriteIds)));
+    } catch (error) {
+      const stored = localStorage.getItem('favorites');
+      if (stored) {
+        setFavorites(new Set<number>(JSON.parse(stored)));
+      }
+    }
   };
 
   if (isLoading) {
@@ -164,9 +230,10 @@ export function HeroSection() {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="h-14 px-6 border-white/30 text-white hover:bg-white/10 rounded-xl"
+                    onClick={() => toggleFavorite(currentAuction.id)}
+                    className="h-14 px-6 bg-white/10 backdrop-blur-sm border-white/30 text-white hover:bg-white/20 rounded-xl"
                   >
-                    <Heart className="w-5 h-5" />
+                    <Heart className={`w-5 h-5 ${favorites.has(currentAuction.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
                   </Button>
                 </div>
               </div>
@@ -202,8 +269,11 @@ export function HeroSection() {
                     <Badge className="bg-white/90 text-primary border-0">
                       {currentAuction.bids_count || 0} مزايدة
                     </Badge>
-                    <button className="p-3 bg-white/90 rounded-full hover:scale-110 transition-transform">
-                      <Heart className="w-5 h-5 text-gray-700" />
+                    <button 
+                      onClick={() => toggleFavorite(currentAuction.id)}
+                      className="p-3 bg-white/90 rounded-full hover:scale-110 transition-transform"
+                    >
+                      <Heart className={`w-5 h-5 ${favorites.has(currentAuction.id) ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
                     </button>
                   </div>
                 </div>

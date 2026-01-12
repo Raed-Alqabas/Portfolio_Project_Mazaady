@@ -23,6 +23,7 @@ import { Input } from "./ui/input";
 import { Separator } from "./ui/separator";
 import { toast } from "sonner";
 import { DepositDialog } from "./DepositDialog";
+import { PaymentConfirmDialog } from "./PaymentConfirmDialog";
 import api from "../api/axios";
 import { calculateTimeRemaining, isAuctionEnded } from "../utils/timeUtils";
 
@@ -40,7 +41,9 @@ export function AuctionDetailsPage() {
 
   const [bidAmount, setBidAmount] = useState("");
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [depositPaid, setDepositPaid] = useState(false);
+  const [isRedirectingToPayment, setIsRedirectingToPayment] = useState(false);
 
   // Animation State
   const [isPriceUpdated, setIsPriceUpdated] = useState(false);
@@ -100,11 +103,7 @@ export function AuctionDetailsPage() {
       return;
     }
 
-    if (!depositPaid) {
-      setDepositDialogOpen(true);
-      return;
-    }
-
+    // Validate bid amount first
     const currentBid = car?.current_bid || car?.start_bid || 0;
     const amount = parseFloat(bidAmount);
 
@@ -121,12 +120,37 @@ export function AuctionDetailsPage() {
       fetchCarDetails();
     } catch (error: any) {
       console.error("Error placing bid:", error);
-      const message = error.response?.data?.error || "حدث خطأ أثناء تقديم المزايدة";
+      
+      // Check if payment is required (402 status)
+      if (error.response?.status === 402 || error.response?.data?.payment_required) {
+        toast.error("يجب دفع رسوم الاشتراك (1500 ريال) قبل المزايدة");
+        
+        // Show payment confirmation dialog
+        setPaymentDialogOpen(true);
+        return;
+      }
+      
+      const message = error.response?.data?.error || error.response?.data?.message || "حدث خطأ أثناء تقديم المزايدة";
       toast.error(message);
     }
   };
 
   const handleDepositPaid = () => setDepositPaid(true);
+
+  const handleConfirmPayment = async () => {
+    try {
+      setIsRedirectingToPayment(true);
+      const paymentResponse = await api.get(`/pay-bidding-access/?car_id=${id}`);
+      const paymentUrl = paymentResponse.data.payment_url;
+      
+      // Redirect to Tap payment
+      window.location.href = paymentUrl;
+    } catch (paymentError) {
+      console.error('Payment initiation error:', paymentError);
+      toast.error('حدث خطأ أثناء بدء عملية الدفع');
+      setIsRedirectingToPayment(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -153,6 +177,62 @@ export function AuctionDetailsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+      {/* Payment Redirect Loading Overlay - Minimal */}
+      {isRedirectingToPayment && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center overflow-hidden">
+          {/* Floating Money Elements Background - Evenly Distributed */}
+          <div className="absolute inset-0 overflow-hidden">
+            {[...Array(15)].map((_, i) => {
+              // Create a 5x3 grid for better distribution
+              const row = Math.floor(i / 5);
+              const col = i % 5;
+              const baseLeft = (col * 20) + 10; // 20% spacing with 10% offset
+              const baseTop = (row * 33) + 10;  // 33% spacing with 10% offset
+              // Add small random offset to avoid perfect grid
+              const randomOffsetX = (Math.random() - 0.5) * 10;
+              const randomOffsetY = (Math.random() - 0.5) * 10;
+              
+              return (
+                <div
+                  key={i}
+                  className="absolute text-4xl animate-float"
+                  style={{
+                    left: `${baseLeft + randomOffsetX}%`,
+                    top: `${baseTop + randomOffsetY}%`,
+                    animationDelay: `${i * 0.3}s`,
+                    animationDuration: `${4 + (i % 3)}s`,
+                    opacity: 0.3,
+                  }}
+                >
+                  {['💰', '💳', '💵', '💴', '💶', '💷', '🪙', '✨'][i % 8]}
+                </div>
+              );
+            })}
+          </div>
+
+          <style>{`
+            @keyframes float {
+              0%, 100% { transform: translateY(0px) rotate(0deg); }
+              25% { transform: translateY(-30px) rotate(10deg); }
+              50% { transform: translateY(-60px) rotate(-10deg); }
+              75% { transform: translateY(-30px) rotate(5deg); }
+            }
+            .animate-float {
+              animation: float ease-in-out infinite;
+            }
+          `}</style>
+
+          {/* Just the Spinner - No Text */}
+          <div className="relative z-10">
+            <div className="w-32 h-32 rounded-full mx-auto relative">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 animate-spin" style={{ padding: '4px' }}>
+                <div className="w-full h-full rounded-full bg-black/80 backdrop-blur"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="container mx-auto px-4">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm mb-6 text-gray-600">
@@ -500,6 +580,11 @@ export function AuctionDetailsPage() {
         onOpenChange={setDepositDialogOpen}
         onDepositPaid={handleDepositPaid}
       />
-    </div >
+      <PaymentConfirmDialog
+        open={paymentDialogOpen}
+        onOpenChange={setPaymentDialogOpen}
+        onConfirm={handleConfirmPayment}
+      />
+    </div>
   );
 }

@@ -31,6 +31,7 @@ class Payment(models.Model):
     PURPOSE_CHOICES = [
         ("ENTRY_FEE", "Entry Fee"),
         ("FINAL_CHARGE", "Final Charge"),
+        ("BIDDING_ACCESS", "Bidding Access"),  # One-time global payment
     ]
 
     STATUS_CHOICES = [
@@ -41,7 +42,8 @@ class Payment(models.Model):
     ]
 
     public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    auction = models.ForeignKey("Mazaady", on_delete=models.CASCADE)
+    auction = models.ForeignKey("Mazaady", on_delete=models.CASCADE, null=True, blank=True)
+    car = models.ForeignKey("Car", on_delete=models.SET_NULL, null=True, blank=True)
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     purpose = models.CharField(max_length=20, choices=PURPOSE_CHOICES)
@@ -70,6 +72,9 @@ class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     phone_country_code = models.CharField(max_length=5, default="966")
     phone_number = models.CharField(max_length=20)
+    bidding_access = models.BooleanField(default=False)
+    masked_id = models.CharField(max_length=20, blank=True, null=True)
+    rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.username} Profile"
@@ -186,3 +191,41 @@ class Bid(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.amount} on {self.car}"
+
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = (
+        ('OUTBID', 'تم تجاوز عرضك'),
+        ('AUCTION_ENDING', 'المزاد ينتهي قريباً'),
+        ('AUCTION_WON', 'فزت بالمزاد'),
+        ('NEW_BID', 'عرض جديد على سيارتك'),
+        ('AUCTION_ENDED', 'انتهى المزاد'),
+        ('PAYMENT_CONFIRMED', 'تم تأكيد الدفع'),
+        ('SYSTEM', 'إشعار النظام'),
+    )
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    link = models.CharField(max_length=200, blank=True, null=True)  # URL to redirect to
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.title}"
+
+class Favorite(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favorites')
+    car = models.ForeignKey(Car, on_delete=models.CASCADE, related_name='favorited_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'car')
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.car.title}"

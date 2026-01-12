@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { Heart, Clock, TrendingUp, Trash2, Grid3x3, List, Search } from "lucide-react";
 import { Button } from "./ui/button";
@@ -6,7 +6,8 @@ import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
+import axios from "../api/axios";
 
 interface FavoriteAuction {
   id: number;
@@ -24,56 +25,45 @@ export function FavoritesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("recent");
-  const [favorites, setFavorites] = useState<FavoriteAuction[]>([
-    {
-      id: 1,
-      title: "تويوتا كامري 2023 - فل كامل",
-      currentBid: 85000,
-      startingPrice: 75000,
-      endTime: "3 ساعات و 24 دقيقة",
-      image: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=500",
-      status: "active",
-      bids: 24,
-      location: "الرياض",
-    },
-    {
-      id: 2,
-      title: "مرسيدس E-Class 2022 - بحالة ممتازة",
-      currentBid: 180000,
-      startingPrice: 165000,
-      endTime: "45 دقيقة",
-      image: "https://images.unsplash.com/photo-1617531653332-bd46c24f2068?w=500",
-      status: "ending-soon",
-      bids: 31,
-      location: "جدة",
-    },
-    {
-      id: 3,
-      title: "هوندا أكورد 2024 - موديل حديث",
-      currentBid: 95000,
-      startingPrice: 88000,
-      endTime: "12 ساعة",
-      image: "https://images.unsplash.com/photo-1619405399517-d7fce0f13302?w=500",
-      status: "active",
-      bids: 18,
-      location: "الدمام",
-    },
-    {
-      id: 4,
-      title: "BMW X5 2021 - دفع رباعي",
-      currentBid: 210000,
-      startingPrice: 195000,
-      endTime: "منتهي",
-      image: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=500",
-      status: "ended",
-      bids: 42,
-      location: "الرياض",
-    },
-  ]);
+  const [favorites, setFavorites] = useState<FavoriteAuction[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleRemoveFavorite = (id: number, title: string) => {
-    setFavorites(favorites.filter((fav) => fav.id !== id));
-    toast.success(`تم إزالة "${title}" من المفضلة`);
+  useEffect(() => {
+    fetchFavorites();
+  }, []);
+
+  const fetchFavorites = async () => {
+    try {
+      const response = await axios.get('/favorites/');
+      const data = response.data.map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        currentBid: item.currentBid,
+        startingPrice: item.startingPrice,
+        endTime: "حسب الحالة", // Placeholder
+        image: item.image || "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=500",
+        status: item.status === 'active' ? 'active' : 'ended',
+        bids: item.bids,
+        location: item.location,
+      }));
+      setFavorites(data);
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+      toast.error('فشل تحميل المفضلة');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveFavorite = async (id: number, title: string) => {
+    try {
+      await axios.delete(`/favorites/${id}/remove/`);
+      setFavorites(favorites.filter((fav) => fav.id !== id));
+      toast.success(`تم إزالة "${title}" من المفضلة`);
+    } catch (error) {
+      console.error('Error removing favorite:', error);
+      toast.error('فشل إزالة المفضلة');
+    }
   };
 
   const getStatusBadge = (status: string) => {
