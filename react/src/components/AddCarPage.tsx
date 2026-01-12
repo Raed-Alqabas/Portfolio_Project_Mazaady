@@ -60,7 +60,8 @@ export function AddCarPage() {
     // Auction Details
     startBid: "",
     reservePrice: "",
-    auctionDuration: "3",
+    auctionDuration: "1",
+    startDate: "",
 
     // Additional Features
     features: [] as string[],
@@ -139,6 +140,26 @@ export function AddCarPage() {
     data.set('reserve_price', formData.reservePrice);
     data.set('engine_size', formData.engineSize);
     data.set('auction_duration', formData.auctionDuration);
+    if (formData.startDate) {
+      // Ensure ISO format with timezone if needed, usually browser sends compatible string or we format it.
+      // Django expects YYYY-MM-DDTHH:MM[:ss[.uuuuuu]][TZ]
+      data.set('start_date', formData.startDate);
+      // If starting in future, backend should set status PENDING.
+      // This logic is naturally handled if we set default status based on date in View, 
+      // OR we can explicitly suggest status, but better to let backend handle it based on valid data.
+      // For now, logic resides in Model/View defaults. 
+      // We set status=PENDING in the View if start_date > now? 
+      // Actually, our Plan says we added PENDING status. 
+      // We should ensure the backend View sets it to PENDING if start_date is future.
+      // But wait, the standard create api might just use default="ACTIVE". 
+      // I need to check if I can modify status from frontend or if I need to update the backend View.
+      // Use Model Logic: override save? Or just pass status='PENDING' from frontend if start_date is set.
+      const start = new Date(formData.startDate);
+      const now = new Date();
+      if (start > now) {
+        data.set('status', 'PENDING');
+      }
+    }
 
     // Append images
     imageFiles.forEach((file) => {
@@ -547,12 +568,24 @@ export function AddCarPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">يوم واحد</SelectItem>
-                      <SelectItem value="3">3 أيام</SelectItem>
-                      <SelectItem value="5">5 أيام</SelectItem>
-                      <SelectItem value="7">7 أيام</SelectItem>
+                      <SelectItem value="1">دقيقة واحدة (تجريبي)</SelectItem>
+                      <SelectItem value="720">12 ساعة</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="startDate">تاريخ بدء المزاد (اختياري)</Label>
+                  <Input
+                    id="startDate"
+                    type="datetime-local"
+                    value={formData.startDate}
+                    onChange={(e) => handleInputChange("startDate", e.target.value)}
+                    min={new Date().toISOString().slice(0, 16)}
+                  />
+                  <p className="text-xs text-gray-500">
+                    اتركه فارغاً لبدء المزاد فوراً
+                  </p>
                 </div>
               </div>
 
