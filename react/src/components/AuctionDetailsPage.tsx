@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { DepositDialog } from "./DepositDialog";
 import { PaymentConfirmDialog } from "./PaymentConfirmDialog";
 import api from "../api/axios";
+import { calculateTimeRemaining, isAuctionEnded } from "../utils/timeUtils";
 
 interface AuthContextType {
   user: { name: string; email: string } | null;
@@ -47,12 +48,8 @@ export function AuctionDetailsPage() {
   // Animation State
   const [isPriceUpdated, setIsPriceUpdated] = useState(false);
 
-  // Keep mock time for now or adjust based on auction duration
-  const [timeLeft, setTimeLeft] = useState({
-    hours: 3,
-    minutes: 25,
-    seconds: 42,
-  });
+  // Track current time for live countdown
+  const [currentTime, setCurrentTime] = useState(Date.now());
 
   const fetchCarDetails = async (showError = true) => {
     try {
@@ -89,16 +86,13 @@ export function AuctionDetailsPage() {
     }
   }, [car?.current_bid]);
 
+  // Update time every second for live countdown
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
-        if (prev.minutes > 0) return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
-        if (prev.hours > 0) return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        return prev;
-      });
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
     }, 1000);
-    return () => clearInterval(timer);
+
+    return () => clearInterval(interval);
   }, []);
 
   const handlePlaceBid = async () => {
@@ -264,9 +258,13 @@ export function AuctionDetailsPage() {
                 ) : (
                   <Car className="w-16 h-16 text-gray-300" />
                 )}
-                <Badge className={`absolute top-4 left-4 ${car.status === 'CLOSED' ? 'bg-gray-600' : 'bg-red-500'}`}>
+                <Badge className={`absolute top-4 left-4 ${car.status === 'CLOSED' || isAuctionEnded(car.start_date, car.auction_duration) ? 'bg-gray-600' :
+                  car.status === 'PENDING' ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}>
                   <Clock className="w-4 h-4 ml-1" />
-                  {car.status === 'CLOSED' ? 'المزاد منتهي' : `ينتهي خلال ${timeLeft.hours}:${String(timeLeft.minutes).padStart(2, '0')}:${String(timeLeft.seconds).padStart(2, '0')}`}
+                  {car.status === 'CLOSED' || isAuctionEnded(car.start_date, car.auction_duration) ? 'المزاد منتهي' :
+                    car.status === 'PENDING' ? `يبدأ خلال ${calculateTimeRemaining(car.start_date, car.auction_duration)}` :
+                      `ينتهي خلال ${calculateTimeRemaining(car.start_date, car.auction_duration)}`}
                 </Badge>
               </div>
               <div className="p-4">
@@ -432,6 +430,31 @@ export function AuctionDetailsPage() {
                         </div>
                       )}
                     </div>
+
+                  ) : car.status === 'PENDING' ? (
+                    <div className="text-center py-6 space-y-4">
+                      <div className="w-16 h-16 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                        <Clock className="w-8 h-8 text-yellow-600" />
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900">سيبدأ المزاد قريباً</h3>
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <p className="text-yellow-800 font-bold text-2xl">
+                          {calculateTimeRemaining(car.start_date, car.auction_duration)}
+                        </p>
+                        <p className="text-yellow-600 text-sm mt-1">يبدأ في {new Date(car.start_date).toLocaleString('ar-SA')}</p>
+                      </div>
+                    </div>
+                  ) : isAuctionEnded(car.start_date, car.auction_duration) ? (
+                    <div className="text-center py-6 space-y-4">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Gavel className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900">المزاد مغلق</h3>
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <p className="text-red-600 font-bold text-lg">انتهى وقت المزاد</p>
+                        <p className="text-red-500 text-sm mt-1">يرجى الانتظار حتى يتم تحديث النتائج</p>
+                      </div>
+                    </div>
                   ) : (
                     <>
                       <style>
@@ -478,9 +501,9 @@ export function AuctionDetailsPage() {
                       <div>
                         <p className="text-sm text-gray-600 mb-1">الوقت المتبقي</p>
                         <div className="flex items-center gap-2">
-                          <Clock className={`w-4 h-4 ${timeLeft.hours === 0 && timeLeft.minutes < 10 ? 'text-red-500 animate-pulse' : 'text-gray-500'}`} />
-                          <span className={`${timeLeft.hours === 0 && timeLeft.minutes < 10 ? 'text-red-500 font-bold' : 'text-gray-900'}`}>
-                            {timeLeft.hours}:{String(timeLeft.minutes).padStart(2, '0')}:{String(timeLeft.seconds).padStart(2, '0')}
+                          <Clock className={`w-4 h-4 ${isAuctionEnded(car.start_date, car.auction_duration) ? 'text-red-500 animate-pulse' : 'text-gray-500'}`} />
+                          <span className={`${isAuctionEnded(car.start_date, car.auction_duration) ? 'text-red-500 font-bold' : 'text-gray-900'}`}>
+                            {calculateTimeRemaining(car.start_date, car.auction_duration)}
                           </span>
                         </div>
                       </div>
@@ -493,18 +516,20 @@ export function AuctionDetailsPage() {
                         </label>
                         <Input
                           type="number"
-                          placeholder="أدخل مبلغ المزايدة"
+                          placeholder={isAuctionEnded(car.start_date, car.auction_duration) ? "المزاد منتهي" : "أدخل مبلغ المزايدة"}
                           value={bidAmount}
                           onChange={(e) => setBidAmount(e.target.value)}
+                          disabled={isAuctionEnded(car.start_date, car.auction_duration)}
                           className="mb-3"
                         />
                         <Button
                           className="w-full gap-2"
                           size="lg"
                           onClick={handlePlaceBid}
+                          disabled={isAuctionEnded(car.start_date, car.auction_duration)}
                         >
                           <Gavel className="w-5 h-5" />
-                          قدم مزايدتك
+                          {isAuctionEnded(car.start_date, car.auction_duration) ? "المزاد منتهي" : "قدم مزايدتك"}
                         </Button>
                       </div>
 

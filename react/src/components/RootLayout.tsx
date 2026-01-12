@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { Gavel, Car, Home, LogIn, User, LogOut, ClipboardList, Megaphone, Heart, Search, ShoppingCart, Bell, LayoutDashboard } from "lucide-react";
 import { Button } from "./ui/button";
 import { AuthDialog } from "./AuthDialog";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -123,6 +123,69 @@ export function RootLayout() {
     toast.success("تم تسجيل الخروج بنجاح");
   };
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/auctions?search=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery(""); // Clear search bar after navigating
+    }
+  };
+
+  // Auto-logout logic
+  const lastActivityRef = useRef(Date.now());
+  const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutes
+
+  useEffect(() => {
+    if (!user) return;
+
+    const updateActivity = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    const checkInactivity = setInterval(() => {
+      const now = Date.now();
+      if (now - lastActivityRef.current > INACTIVITY_TIMEOUT) {
+        handleLogout();
+        navigate("/");
+        toast.info("تم تسجيل الخروج تلقائياً بسبب الخمول", {
+          description: "تمت إعادة توجيهك إلى الصفحة الرئيسية",
+        });
+      }
+    }, 30000); // Check every 30 seconds
+
+    // Multi-event activity tracking
+    window.addEventListener("mousedown", updateActivity);
+    window.addEventListener("mousemove", updateActivity);
+    window.addEventListener("keydown", updateActivity);
+    window.addEventListener("scroll", updateActivity);
+    window.addEventListener("touchstart", updateActivity);
+
+    return () => {
+      clearInterval(checkInactivity);
+      window.removeEventListener("mousedown", updateActivity);
+      window.removeEventListener("mousemove", updateActivity);
+      window.removeEventListener("keydown", updateActivity);
+      window.removeEventListener("scroll", updateActivity);
+      window.removeEventListener("touchstart", updateActivity);
+    };
+  }, [user, navigate]);
+
+  // Restore user from localStorage on component mount
+  useEffect(() => {
+    const token = localStorage.getItem("access"); // Changed from "token" to "access"
+    const storedUser = localStorage.getItem("user");
+
+    if (token && storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+      } catch (error) {
+        console.error("Error parsing stored user data:", error);
+        localStorage.removeItem("user");
+      }
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <ScrollToTop />
@@ -142,7 +205,7 @@ export function RootLayout() {
 
             {/* Search Bar - Center */}
             <div className="flex-1 max-w-2xl">
-              <div className="relative">
+              <form onSubmit={handleSearch} className="relative">
                 <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
@@ -151,7 +214,7 @@ export function RootLayout() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full h-12 pr-12 pl-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                 />
-              </div>
+              </form>
             </div>
 
             {/* Right Icons & Auth */}

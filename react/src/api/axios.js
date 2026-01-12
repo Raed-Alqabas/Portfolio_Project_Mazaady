@@ -34,9 +34,10 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      // 1. Clear invalid tokens
+      // 1. Clear invalid tokens and user data
       localStorage.removeItem("access");
       localStorage.removeItem("refresh");
+      localStorage.removeItem("user");
 
       // 2. Remove Authorization header to force guest mode
       if (originalRequest.headers) {

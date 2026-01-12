@@ -85,7 +85,13 @@ def add_car_api(request):
     print("DEBUG: add_car_api call received. Files:", request.FILES)
     serializer = CarSerializer(data=request.data)
     if serializer.is_valid():
-        car = serializer.save(user=request.user)
+        # Allow frontend to set status specifically to PENDING if start_date is in the future
+        # Otherwise, the model default 'IN_REVIEW' will be used
+        status = request.data.get('status')
+        if status == 'PENDING':
+            car = serializer.save(user=request.user, status='PENDING')
+        else:
+            car = serializer.save(user=request.user)
         
         # Handle multiple images
         images = request.FILES.getlist('images')
@@ -110,8 +116,54 @@ def my_cars_api(request):
 @permission_classes([AllowAny])
 def public_cars_api(request):
     from .models import Car
-    cars = Car.objects.filter(status='ACTIVE').prefetch_related('images', 'bids').order_by('-created_at')
-    serializer = CarSerializer(cars, many=True, context={'request': request})
+    from django.db.models import Q
+    
+    # Allow filtering by status, default to ACTIVE
+    status_filter = request.GET.get('status', 'ACTIVE')
+    search_query = request.GET.get('search', '')
+    
+    # Base queryset
+    if status_filter == 'all':
+        queryset = Car.objects.filter(status__in=['ACTIVE', 'CLOSED'])
+    else:
+        queryset = Car.objects.filter(status=status_filter)
+    
+    # Apply search filter if provided
+    if search_query:
+        queryset = queryset.filter(
+            Q(title__icontains=search_query) |
+            Q(brand__icontains=search_query) |
+            Q(model__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(location__icontains=search_query)
+        )
+    
+    queryset = queryset.prefetch_related('images', 'bids')
+    
+    # Reactive check: update status if expired for results
+    # (Only needed for items that aren't already CLOSED)
+    for car in queryset.filter(status='ACTIVE'):
+        car.check_status()
+        
+    # Re-query after status updates to get accurate final list
+    # Re-applying filters to the base queryset logic
+    if status_filter == 'all':
+        final_queryset = Car.objects.filter(status__in=['ACTIVE', 'CLOSED'])
+    else:
+        final_queryset = Car.objects.filter(status=status_filter)
+        
+    if search_query:
+        final_queryset = final_queryset.filter(
+            Q(title__icontains=search_query) |
+            Q(brand__icontains=search_query) |
+            Q(model__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(location__icontains=search_query)
+        )
+        
+    final_cars = final_queryset.prefetch_related('images', 'bids').order_by('-created_at')
+        
+    serializer = CarSerializer(final_cars, many=True, context={'request': request})
     return Response(serializer.data)
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
@@ -150,7 +202,7 @@ def update_car_api(request, pk):
         serializer = CarSerializer(car, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             # Reset status to IN_REVIEW whenever an update is made
-            updated_car = serializer.save()
+            updated_car = serializer.save(status='IN_REVIEW')
             
             # Handle new images if provided
             images = request.FILES.getlist('images')
@@ -175,6 +227,7 @@ def update_car_api(request, pk):
         return Response({'error': 'Car not found or unauthorized'}, status=404)
     except Exception as e:
         print(f"DEBUG: Update failed:", e)
+        return Response({'error': str(e)}, status=500)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def place_bid_api(request, pk):
@@ -197,7 +250,14 @@ def place_bid_api(request, pk):
         }, status=402)
     
     try:
-        car = Car.objects.get(pk=pk, status='ACTIVE')
+        car = Car.objects.get(pk=pk)
+        
+        # Reactive check before placing bid
+        car.check_status()
+        
+        if car.status != 'ACTIVE':
+            return Response({'error': 'Auction is not active'}, status=400)
+            
         amount = request.data.get('amount')
         
         if not amount:
@@ -249,9 +309,12 @@ def public_car_detail_api(request, pk):
     try:
         # Allow viewing if car is ACTIVE OR if the requester is the owner
         if request.user.is_authenticated:
-            car = Car.objects.get(Q(pk=pk) & (Q(status='ACTIVE') | Q(user=request.user)))
+            car = Car.objects.get(Q(pk=pk) & (Q(status='ACTIVE') | Q(status='CLOSED') | Q(user=request.user)))
         else:
-            car = Car.objects.get(pk=pk, status='ACTIVE')
+            car = Car.objects.get(Q(pk=pk) & (Q(status='ACTIVE') | Q(status='CLOSED')))
+            
+        # Reactive check
+        car.check_status()
             
         serializer = CarSerializer(car, context={'request': request})
         return Response(serializer.data)

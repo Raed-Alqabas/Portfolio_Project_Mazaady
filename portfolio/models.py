@@ -117,16 +117,20 @@ class Car(models.Model):
     features = models.JSONField(default=list, blank=True)
     
     # Auction Result
+    # Auction Result
     winner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='won_cars')
     
     STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
         ('IN_REVIEW', 'In Review'),
+        ('SOON', 'Soon'),
         ('ACTIVE', 'Active'),
         ('REJECTED', 'Rejected'),
         ('CLOSED', 'Closed'),
     ]
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='IN_REVIEW')
     
+    start_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -138,6 +142,32 @@ class Car(models.Model):
     @property
     def bids_count(self):
         return self.bids.count()
+
+    @property
+    def is_expired(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        if self.status == 'CLOSED':
+            return True
+            
+        base_time = self.start_date if self.start_date else self.created_at
+        expiration_time = base_time + timedelta(minutes=self.auction_duration)
+        return timezone.now() >= expiration_time
+
+    def check_status(self):
+        """Updates status to CLOSED if auction has expired"""
+        if self.status == 'ACTIVE' and self.is_expired:
+            self.status = 'CLOSED'
+            
+            # Find and set winner
+            highest_bid = self.bids.order_by('-amount').first()
+            if highest_bid:
+                self.winner = highest_bid.user
+                
+            self.save(update_fields=['status', 'winner'])
+            return True
+        return False
 
     def __str__(self):
         return f"{self.year} {self.brand} {self.model}"

@@ -13,19 +13,23 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { toast } from "sonner";
 import api from "../api/axios";
+import { calculateTimeRemaining, calculateTimeUntilStart } from "../utils/timeUtils";
 
 export function HeroSection() {
   const [featuredCars, setFeaturedCars] = useState<any[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
+  const [currentTime, setCurrentTime] = useState(Date.now());
 
   useEffect(() => {
     const fetchFeaturedCars = async () => {
       try {
-        const response = await api.get("/cars/public/");
-        // Limit to top 5 featured cars or shuffle
-        setFeaturedCars(response.data.slice(0, 5));
+        // Fetch both Active and Soon auctions for the hero section
+        const response = await api.get("/cars/public/?status=all");
+        const allCars = response.data;
+        const relevantCars = allCars.filter((car: any) => car.status === 'ACTIVE' || car.status === 'SOON');
+        setFeaturedCars(relevantCars.slice(0, 5));
       } catch (error) {
         console.error("Error fetching featured cars:", error);
       } finally {
@@ -46,6 +50,15 @@ export function HeroSection() {
 
     window.addEventListener('favoritesChanged', handleFavoritesChange);
     return () => window.removeEventListener('favoritesChanged', handleFavoritesChange);
+  }, []);
+
+  // Update time every second for live countdown
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -135,6 +148,11 @@ export function HeroSection() {
   const mainImage = currentAuction.images?.[0]?.image || "https://images.unsplash.com/photo-1617531653332-bd46c24f2068?w=1200";
   const currentBid = Number(currentAuction.current_bid || currentAuction.start_bid).toLocaleString();
 
+  const isSoon = currentAuction.status === 'SOON';
+  const timeDisplay = isSoon
+    ? calculateTimeUntilStart(currentAuction.start_date)
+    : calculateTimeRemaining(currentAuction.start_date, currentAuction.auction_duration);
+
   return (
     <section className="relative bg-gradient-to-br from-primary via-primary to-primary/90 text-white overflow-hidden">
       {/* Background Image */}
@@ -154,7 +172,7 @@ export function HeroSection() {
             {/* Left Side - Content */}
             <div className="space-y-6">
               <Badge className="bg-accent/20 text-accent border-accent/30 backdrop-blur-sm text-sm py-2 px-4">
-                🏆 مزاد مميز
+                {isSoon ? "📅 قريباً" : "🏆 مزاد مميز"}
               </Badge>
 
               <div>
@@ -170,16 +188,20 @@ export function HeroSection() {
               <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
                 <div className="grid grid-cols-2 gap-6 mb-6">
                   <div>
-                    <div className="text-sm text-blue-200 mb-1">المزايدة الحالية</div>
+                    <div className="text-sm text-blue-200 mb-1">
+                      {isSoon ? "سعر البداية" : "المزايدة الحالية"}
+                    </div>
                     <div className="text-3xl font-bold">
                       {currentBid} ريال
                     </div>
                   </div>
                   <div>
-                    <div className="text-sm text-blue-200 mb-1">الوقت المتبقي</div>
+                    <div className="text-sm text-blue-200 mb-1">
+                      {isSoon ? "موعد البدء" : "الوقت المتبقي"}
+                    </div>
                     <div className="flex items-center gap-2 text-2xl font-bold">
                       <Clock className="w-6 h-6" />
-                      {currentAuction.auction_duration} أيام
+                      {timeDisplay}
                     </div>
                   </div>
                 </div>
@@ -187,10 +209,10 @@ export function HeroSection() {
                 <div className="flex items-center justify-between mb-6 pb-6 border-b border-white/20">
                   <div className="flex items-center gap-2 text-sm">
                     <TrendingUp className="w-5 h-5 text-accent" />
-                    <span>{currentAuction.bids_count || 0} مزايدة نشطة</span>
+                    <span>{isSoon ? "لم تبدأ المزايدة بعد" : `${currentAuction.bids_count || 0} مزايدة نشطة`}</span>
                   </div>
-                  <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
-                    نشط الآن
+                  <Badge className={isSoon ? "bg-blue-500/20 text-blue-300 border-blue-500/30" : "bg-green-500/20 text-green-300 border-green-500/30"}>
+                    {isSoon ? "يبدأ قريباً" : "نشط الآن"}
                   </Badge>
                 </div>
 
