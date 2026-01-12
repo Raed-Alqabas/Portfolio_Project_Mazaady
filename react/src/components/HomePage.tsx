@@ -120,6 +120,8 @@ export function HomePage() {
         toast.error("حدث خطأ، حاول مرة أخرى");
       }
     }
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     fetchActiveCars(searchTerm);

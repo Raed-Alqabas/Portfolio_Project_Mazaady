@@ -124,7 +124,7 @@ def public_cars_api(request):
     
     # Base queryset
     if status_filter == 'all':
-        queryset = Car.objects.filter(status__in=['ACTIVE', 'CLOSED'])
+        queryset = Car.objects.filter(status__in=['ACTIVE', 'CLOSED', 'SOON'])
     else:
         queryset = Car.objects.filter(status=status_filter)
     
