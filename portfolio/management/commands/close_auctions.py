@@ -10,22 +10,35 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         now = timezone.now()
-        # Find active cars that have expired
-        # We need to filter where created_at + auction_duration (days) < now
-        # Since we can't do arithmetic in filter easily for all DBs, we'll iterate or use annotation if needed.
-        # For simplicity with small dataset, iterating is fine, or we can filter by created_at < now - duration
         
-        # But duration is per car. So we get all active cars.
+        # 1. Activate Pending/Soon Auctions
+        pending_soon_cars = Car.objects.filter(status__in=['PENDING', 'SOON'])
+        activated_count = 0
+        for car in pending_soon_cars:
+            # If start_date is set and passed, or if no start_date (immediate), activate
+            if not car.start_date or (car.start_date and now >= car.start_date):
+                car.status = 'ACTIVE'
+                car.save()
+                activated_count += 1
+                self.stdout.write(f"Activated Car {car.id}: {car.title}")
+
+        self.stdout.write(self.style.SUCCESS(f'Successfully activated {activated_count} pending/soon auctions'))
+
+        # 2. Close Expired Auctions
+        # Duration is now in MINUTES.
+        # Expiration = (start_date OR created_at) + duration
         active_cars = Car.objects.filter(status='ACTIVE')
         
-        count = 0
+        closed_count = 0
         for car in active_cars:
-            expiration_time = car.created_at + timedelta(days=car.auction_duration)
+            base_time = car.start_date if car.start_date else car.created_at
+            expiration_time = base_time + timedelta(minutes=car.auction_duration)
+            
             if now >= expiration_time:
                 self.close_auction(car)
-                count += 1
+                closed_count += 1
         
-        self.stdout.write(self.style.SUCCESS(f'Successfully closed {count} auctions'))
+        self.stdout.write(self.style.SUCCESS(f'Successfully closed {closed_count} auctions'))
 
     def close_auction(self, car):
         car.status = 'CLOSED'

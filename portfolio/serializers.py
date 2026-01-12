@@ -83,7 +83,8 @@ class CarSerializer(serializers.ModelSerializer):
             'cylinders', 'condition', 'vin', 'accidents', 'start_bid',
             'reserve_price', 'auction_duration', 'inspection_report',
             'features', 'images', 'status', 'current_bid', 'bids_count',
-            'recent_bids', 'created_at', 'updated_at', 'winner'
+            'features', 'images', 'status', 'current_bid', 'bids_count',
+            'recent_bids', 'created_at', 'updated_at', 'winner', 'start_date'
         ]
         read_only_fields = ['user', 'status', 'current_bid', 'bids_count', 'recent_bids']
 

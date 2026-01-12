@@ -8,30 +8,53 @@ import { Input } from "./ui/input";
 import { useState, useEffect } from "react";
 
 import { HeroSection } from "./HeroSection";
-import logoImage from "../assets/main-logo.png";
 import api from "../api/axios";
+import { calculateTimeRemaining, calculateTimeUntilStart } from "../utils/timeUtils";
 
 
 export function HomePage() {
   const [activeCars, setActiveCars] = useState<any[]>([]);
+  const [soonCars, setSoonCars] = useState<any[]>([]);
+  const [closedCars, setClosedCars] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [carType, setCarType] = useState("all");
   const [region, setRegion] = useState("all");
+  const [currentTime, setCurrentTime] = useState(Date.now());
 
   useEffect(() => {
     fetchActiveCars();
   }, []);
 
-  const fetchActiveCars = async () => {
+  // Update time every second for live countdown
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchActiveCars = async (search = "") => {
     try {
-      const response = await api.get("/cars/public/");
-      setActiveCars(response.data);
+      setIsLoading(true);
+      // Fetch both active and closed cars with optional search
+      const response = await api.get(`/cars/public/?status=all&search=${search}`);
+      const allCars = response.data;
+
+      setActiveCars(allCars.filter((car: any) => car.status === 'ACTIVE'));
+      setSoonCars(allCars.filter((car: any) => car.status === 'SOON'));
+      setClosedCars(allCars.filter((car: any) => car.status === 'CLOSED'));
     } catch (error) {
-      console.error("Error fetching active cars:", error);
+      console.error("Error fetching cars:", error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchActiveCars(searchTerm);
   };
 
   const features = [
@@ -69,7 +92,7 @@ export function HomePage() {
           {/* Search Section */}
           <Card className="mb-8 bg-gradient-to-r from-blue-50 to-white">
             <CardContent className="p-6">
-              <div className="grid md:grid-cols-12 gap-4">
+              <form onSubmit={handleSearch} className="grid md:grid-cols-12 gap-4">
                 <div className="md:col-span-5">
                   <div className="relative">
                     <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -114,13 +137,11 @@ export function HomePage() {
                   </Select>
                 </div>
                 <div className="md:col-span-1">
-                  <Link to="/auctions">
-                    <Button className="w-full">
-                      <Search className="w-4 h-4" />
-                    </Button>
-                  </Link>
+                  <Button type="submit" className="w-full">
+                    <Search className="w-4 h-4" />
+                  </Button>
                 </div>
-              </div>
+              </form>
             </CardContent>
           </Card>
 
@@ -186,7 +207,7 @@ export function HomePage() {
                         <div className="absolute bottom-0 left-0 right-0 p-3 flex items-end justify-between text-white z-10">
                           <div className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            <span className="text-sm">{car.auction_duration} أيام</span>
+                            <span className="text-sm">{calculateTimeRemaining(car.start_date, car.auction_duration)}</span>
                           </div>
                           <div className="text-left">
                             <div className="text-xs opacity-90">سعر البداية</div>
@@ -215,6 +236,136 @@ export function HomePage() {
             )}
           </div>
 
+          {/* Coming Soon Auctions Section */}
+          {soonCars.length > 0 && (
+            <div className="mt-20">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="mb-2">تبدأ قريباً</h2>
+                  <p className="text-gray-600">مزادات تمت مراجعتها وستبدأ في الموعد المحدد</p>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6">
+                {soonCars.map((car) => {
+                  const mainImage = car.images?.[0]?.image;
+
+                  return (
+                    <Link to={`/auction/${car.id}`} key={car.id} className="block group">
+                      <div className="overflow-hidden rounded-lg border shadow-sm hover:shadow-md transition-all duration-300">
+                        {/* Image Container */}
+                        <div className="relative aspect-video overflow-hidden rounded-t-lg bg-gray-200">
+                          {mainImage ? (
+                            <img
+                              src={mainImage}
+                              alt={car.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                              <Car className="w-10 h-10 text-gray-300" />
+                            </div>
+                          )}
+
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+
+                          <Badge className="absolute top-3 left-3 bg-blue-500 text-white border-0 px-3 py-1 text-xs backdrop-blur-sm z-20">
+                            قريباً
+                          </Badge>
+
+                          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white z-10">
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              <span className="text-xs">{calculateTimeUntilStart(car.start_date)}</span>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-[10px] opacity-80">سعر البداية</div>
+                              <div className="text-sm font-bold">{parseInt(car.start_bid).toLocaleString()} ريال</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-4 bg-white">
+                          <h3 className="text-gray-800 font-semibold mb-1 line-clamp-1">{car.title}</h3>
+                          <div className="flex items-center justify-between text-[11px] text-gray-500">
+                            <span>{car.brand} {car.model}</span>
+                            <span>{car.year}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Closed Auctions Section */}
+          {closedCars.length > 0 && (
+            <div className="mt-20">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="mb-2">المزادات المنتهية</h2>
+                  <p className="text-gray-600">المزادات التي انتهى وقتها مؤخراً</p>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6 opacity-80">
+                {closedCars.map((car) => {
+                  const mainImage = car.images?.[0]?.image;
+
+                  return (
+                    <Link to={`/auction/${car.id}`} key={car.id} className="block group grayscale hover:grayscale-0 transition-all duration-300">
+                      <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm bg-gray-50">
+                        {/* Image Container */}
+                        <div className="relative aspect-video overflow-hidden rounded-t-lg bg-gray-200">
+                          {mainImage ? (
+                            <img
+                              src={mainImage}
+                              alt={car.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                              <Car className="w-10 h-10 text-gray-300" />
+                            </div>
+                          )}
+
+                          {/* Dark overlay for closed look */}
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <Badge variant="secondary" className="bg-white/90 text-gray-900 scale-125">
+                              منتهي
+                            </Badge>
+                          </div>
+
+                          {/* Info Overlay */}
+                          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white z-10">
+                            <div className="flex items-center gap-1 bg-black/50 px-2 py-0.5 rounded text-xs">
+                              <TrendingUp className="w-3 h-3" />
+                              <span>{car.brand}</span>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs opacity-90 font-bold">السعر النهائي: {Number(car.current_bid).toLocaleString()} ريال</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-4">
+                          <h3 className="text-gray-700 font-semibold mb-1 line-clamp-1">{car.title}</h3>
+                          <div className="flex items-center justify-between text-xs text-gray-400">
+                            <span>{car.region || car.location}</span>
+                            <span>{car.year}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
