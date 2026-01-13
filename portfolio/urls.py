@@ -52,4 +52,6 @@ urlpatterns = [
     
     # Admin Dashboard
     path('admin/dashboard/', api_views.admin_dashboard_api, name='api-admin-dashboard'),
+    path('admin/cars/<int:pk>/approve/', api_views.approve_car_api, name='api-approve-car'),
+    path('admin/cars/<int:pk>/reject/', api_views.reject_car_api, name='api-reject-car'),
 ]

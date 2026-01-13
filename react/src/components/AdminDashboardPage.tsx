@@ -19,7 +19,9 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
 import axios from "../api/axios";
+import { toast } from "sonner";
 
 interface DashboardData {
   userActivity: {
@@ -63,6 +65,7 @@ interface DashboardData {
       time: string;
     }>;
     recentCars: Array<{
+      id: number;
       title: string;
       seller: string;
       status: string;
@@ -85,6 +88,7 @@ export function AdminDashboardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
+  const [processingCarId, setProcessingCarId] = useState<number | null>(null);
 
   useEffect(() => {
     checkAdminAndFetchData();
@@ -133,6 +137,34 @@ export function AdminDashboardPage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleApproveCar = async (carId: number) => {
+    setProcessingCarId(carId);
+    try {
+      await axios.post(`/admin/cars/${carId}/approve/`);
+      toast.success('تم قبول السيارة بنجاح');
+      fetchDashboardData();
+    } catch (error: any) {
+      console.error('Error approving car:', error);
+      toast.error(error.response?.data?.error || 'فشل قبول السيارة');
+    } finally {
+      setProcessingCarId(null);
+    }
+  };
+
+  const handleRejectCar = async (carId: number) => {
+    setProcessingCarId(carId);
+    try {
+      await axios.post(`/admin/cars/${carId}/reject/`);
+      toast.success('تم رفض السيارة');
+      fetchDashboardData();
+    } catch (error: any) {
+      console.error('Error rejecting car:', error);
+      toast.error(error.response?.data?.error || 'فشل رفض السيارة');
+    } finally {
+      setProcessingCarId(null);
     }
   };
 
@@ -461,12 +493,42 @@ export function AdminDashboardPage() {
             <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
               {data.recentActivity.recentCars.map((car, index) => (
                 <div key={index} className="p-3 bg-slate-700/30 rounded-lg hover:bg-slate-700/50 transition-colors">
-                  <div className="flex items-start justify-between mb-2">
-                    <Badge className={getStatusColor(car.status)}>{car.status}</Badge>
-                    <span className="text-xs text-slate-400">منذ {car.time}</span>
-                  </div>
-                  <p className="text-slate-100 font-medium text-sm mb-1 truncate">{car.title}</p>
-                  <p className="text-xs text-slate-300">بواسطة {car.seller}</p>
+                  {car.status === 'IN_REVIEW' ? (
+                    <>
+                      <p className="text-slate-100 font-medium text-sm mb-2 truncate">{car.title}</p>
+                      <p className="text-xs text-slate-300 mb-3">بواسطة {car.seller}</p>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => handleApproveCar(car.id)}
+                          disabled={processingCarId === car.id}
+                          size="sm"
+                          className="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs h-7"
+                        >
+                          <CheckCircle className="w-3 h-3 ml-1" />
+                          قبول
+                        </Button>
+                        <Button
+                          onClick={() => handleRejectCar(car.id)}
+                          disabled={processingCarId === car.id}
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 border-red-200 text-red-600 hover:bg-red-50 text-xs h-7"
+                        >
+                          <XCircle className="w-3 h-3 ml-1" />
+                          رفض
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-start justify-between mb-2">
+                        <Badge className={getStatusColor(car.status)}>{car.status}</Badge>
+                        <span className="text-xs text-slate-400">منذ {car.time}</span>
+                      </div>
+                      <p className="text-slate-100 font-medium text-sm mb-1 truncate">{car.title}</p>
+                      <p className="text-xs text-slate-300">بواسطة {car.seller}</p>
+                    </>
+                  )}
                 </div>
               ))}
               {data.recentActivity.recentCars.length === 0 && (
