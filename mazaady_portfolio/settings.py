@@ -133,8 +133,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'mazaady_db',
-        'USER': 'admin',
-        'PASSWORD': 'admin@AdMiN123',
+        'USER': 'rayan',
+        'PASSWORD': '1230',
         'HOST': 'localhost',
         'PORT': '3306',
     }
@@ -195,8 +195,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'ryanhantoul@gmail.com'
-EMAIL_HOST_PASSWORD = 'nbjl anhz czaa qcnb'  # Use app password if 2FA enabled
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
 

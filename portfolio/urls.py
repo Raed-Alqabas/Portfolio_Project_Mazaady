@@ -55,4 +55,7 @@ urlpatterns = [
     path('admin/cars/<int:pk>/approve/', api_views.approve_car_api, name='api-approve-car'),
     path('admin/cars/<int:pk>/reject/', api_views.reject_car_api, name='api-reject-car'),
     path('admin/cars/<int:pk>/delete/', api_views.delete_car_api, name='api-admin-delete-car'),
+    
+    # Contact Us
+    path('contact/', api_views.contact_us_api, name='api-contact'),
 ]

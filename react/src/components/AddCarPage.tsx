@@ -37,6 +37,7 @@ export function AddCarPage() {
     model: "",
     year: "",
     color: "",
+    bodyType: "",
 
     // Technical Details
     mileage: "",
@@ -219,6 +220,22 @@ export function AddCarPage() {
       return;
     }
 
+    if (!formData.startDate) {
+      toast.error("يرجى تحديد تاريخ ووقت بدء المزاد");
+      return;
+    }
+
+    const startDateTime = new Date(formData.startDate);
+    const startHour = startDateTime.getHours();
+    const startMinutes = startDateTime.getMinutes();
+
+    // Check if time is between 8:00 AM and 2:00 PM (14:00)
+    // 8:00 is allowed. 14:00 is allowed. 14:01 is not.
+    if (startHour < 8 || (startHour > 14 || (startHour === 14 && startMinutes > 0))) {
+      toast.error("يجب أن يكون وقت بدء المزاد بين الساعة 8 صباحاً و 2 ظهراً");
+      return;
+    }
+
     setIsSubmitting(true);
     const data = new FormData();
 
@@ -238,25 +255,15 @@ export function AddCarPage() {
     data.set('reserve_price', formData.reservePrice);
     data.set('engine_size', formData.engineSize);
     data.set('auction_duration', formData.auctionDuration);
-    if (formData.startDate) {
-      // Ensure ISO format with timezone if needed, usually browser sends compatible string or we format it.
-      // Django expects YYYY-MM-DDTHH:MM[:ss[.uuuuuu]][TZ]
-      data.set('start_date', formData.startDate);
-      // If starting in future, backend should set status PENDING.
-      // This logic is naturally handled if we set default status based on date in View, 
-      // OR we can explicitly suggest status, but better to let backend handle it based on valid data.
-      // For now, logic resides in Model/View defaults. 
-      // We set status=PENDING in the View if start_date > now? 
-      // Actually, our Plan says we added PENDING status. 
-      // We should ensure the backend View sets it to PENDING if start_date is future.
-      // But wait, the standard create api might just use default="ACTIVE". 
-      // I need to check if I can modify status from frontend or if I need to update the backend View.
-      // Use Model Logic: override save? Or just pass status='PENDING' from frontend if start_date is set.
-      const start = new Date(formData.startDate);
-      const now = new Date();
-      if (start > now) {
-        data.set('status', 'PENDING');
-      }
+
+    // startDate is now required
+    data.set('start_date', formData.startDate);
+    data.set('body_type', formData.bodyType);
+
+    const start = new Date(formData.startDate);
+    const now = new Date();
+    if (start > now) {
+      data.set('status', 'PENDING');
     }
 
     // Append images
@@ -403,6 +410,25 @@ export function AddCarPage() {
                       {carBrands.map(brand => (
                         <SelectItem key={brand} value={brand}>{brand}</SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bodyType">نوع الهيكل</Label>
+                  <Select value={formData.bodyType} onValueChange={(value: string) => handleInputChange("bodyType", value)}>
+                    <SelectTrigger id="bodyType">
+                      <SelectValue placeholder="اختر نوع الهيكل" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sedan">سيدان</SelectItem>
+                      <SelectItem value="suv">دفع رباعي (SUV)</SelectItem>
+                      <SelectItem value="sports">رياضية</SelectItem>
+                      <SelectItem value="truck">شاحنة</SelectItem>
+                      <SelectItem value="coupe">كوبيه</SelectItem>
+                      <SelectItem value="convertible">كشف</SelectItem>
+                      <SelectItem value="van">فان / عائلي</SelectItem>
+                      <SelectItem value="hatchback">هاتشباك</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -625,7 +651,7 @@ export function AddCarPage() {
                 تقرير الفحص
               </CardTitle>
               <CardDescription>
-                إرفاق تقرير فحص السيارة (اختياري لكن يزيد من مصداقية الإعلان)
+                إرفاق تقرير فحص السيارة (اختياري)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -701,33 +727,35 @@ export function AddCarPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1">دقيقة واحدة (تجريبي)</SelectItem>
-                      <SelectItem value="720">12 ساعة</SelectItem>
+                      <SelectItem value="3">3 دقائق (تجريبي)</SelectItem>
+                      <SelectItem value="360">6 ساعات</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="startDate">تاريخ بدء المزاد (اختياري)</Label>
+                  <Label htmlFor="startDate">تاريخ بدء المزاد *</Label>
                   <Input
                     id="startDate"
                     type="datetime-local"
                     value={formData.startDate}
                     onChange={(e) => handleInputChange("startDate", e.target.value)}
                     min={new Date().toISOString().slice(0, 16)}
+                    required
                   />
                   <p className="text-xs text-gray-500">
-                    اتركه فارغاً لبدء المزاد فوراً
+                    يجب أن يكون وقت البدء بين 8:00 صباحاً و 2:00 ظهراً
                   </p>
                 </div>
               </div>
 
               <div className="bg-primary/5 p-4 rounded-lg border border-primary/10">
-                <p className="text-sm font-semibold text-primary mb-2">رسوم النشر:</p>
+                {/* <p className="text-sm font-semibold text-primary mb-2">رسوم النشر:</p> */}
                 <div className="space-y-1 text-sm text-gray-700">
-                  <div className="flex justify-between">
+                  {/* <div className="flex justify-between">
                     <span>رسوم الإعلان</span>
                     <span className="font-medium">500 ريال</span>
-                  </div>
+                  </div> */}
                   <div className="flex justify-between">
                     <span>عمولة المنصة عند البيع</span>
                     <span className="font-medium">2.5%</span>

@@ -9,6 +9,9 @@ from .models import CarImage
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.parsers import MultiPartParser, FormParser
 from decimal import Decimal
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import get_template
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -20,6 +23,20 @@ def register_api(request):
         user = serializer.save()
         refresh = RefreshToken.for_user(user)
         print("DEBUG: Register success for:", user.username)
+        
+        # Send Welcome Email
+        try:
+            htmly = get_template('portfolio/Email.html')
+            d = {'username': user.username}
+            subject, from_email, to = 'Welcome to Mazaady', 'Mazaady App <ryanhantoul@gmail.com>', user.email
+            html_content = htmly.render(d)
+            msg = EmailMultiAlternatives(subject, html_content, from_email, [to])
+            msg.attach_alternative(html_content, "text/html")
+            msg.send()
+            print("DEBUG: Welcome email sent to", user.email)
+        except Exception as e:
+            print("DEBUG: Failed to send welcome email:", e)
+            
         return Response({
             'user': UserSerializer(user).data,
             'refresh': str(refresh),
@@ -143,7 +160,7 @@ def public_cars_api(request):
     # Re-query after status updates to get accurate final list
     # Re-applying filters to the base queryset logic
     if status_filter == 'all':
-        final_queryset = Car.objects.filter(status__in=['ACTIVE', 'CLOSED'])
+        final_queryset = Car.objects.filter(status__in=['ACTIVE', 'CLOSED', 'SOON'])
     else:
         final_queryset = Car.objects.filter(status=status_filter)
         
@@ -155,6 +172,16 @@ def public_cars_api(request):
             Q(description__icontains=search_query) |
             Q(location__icontains=search_query)
         )
+        
+    # Apply additional filters: body_type & region
+    body_type = request.GET.get('type', 'all')
+    region = request.GET.get('region', 'all')
+    
+    if body_type != 'all' and body_type:
+        final_queryset = final_queryset.filter(body_type__iexact=body_type)
+        
+    if region != 'all' and region:
+        final_queryset = final_queryset.filter(location__icontains=region)
         
     final_cars = final_queryset.prefetch_related('images', 'bids').order_by('-created_at')
         
@@ -1152,3 +1179,29 @@ def reject_car_api(request, pk):
     except Exception as e:
         return Response({'error': str(e)}, status=500)
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def contact_us_api(request):
+    from django.core.mail import send_mail
+    from .forms import ContactForm
+    
+    name = request.data.get("name")
+    email = request.data.get("email")
+    subject = request.data.get("subject")
+    message = request.data.get("message")
+    
+    if not all([name, email, subject, message]):
+        return Response({"error": "All fields are required"}, status=400)
+    
+    try:
+        full_message = f"Name: {name}\nEmail: {email}\n\nMessage:\n{message}"
+        send_mail(
+            subject=f"Contact Form: {subject}",
+            message=full_message,
+            from_email=None,
+            recipient_list=["ryanhantoul@gmail.com"],
+            fail_silently=False,
+        )
+        return Response({"message": "Success"})
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)

@@ -61,20 +61,20 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
         });
 
         onLogin({
-          name: response.user.username,
+          name: response.user.first_name || response.user.username,
           email: response.user.email,
         });
 
         Swal.fire({
           position: "top",
           icon: "success",
-          title: "تم تسجيل الدخول بنجاح! حياك " + response.user.username,
+          title: " تم تسجيل الدخول بنجاح! حياك " + (response.user.first_name),
           showConfirmButton: false,
           timer: 3000
         });
         onOpenChange(false);
         resetForm();
-        
+
         // Redirect to home and scroll to top
         navigate('/');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -120,20 +120,20 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
         });
 
         onLogin({
-          name: response.user.username,
+          name: response.user.first_name || response.user.username,
           email: response.user.email,
         });
 
         Swal.fire({
           position: "top",
           icon: "success",
-          title: "تم إنشاء الحساب بنجاح! مرحباً بك " + response.user.username,
+          title: "تم إنشاء الحساب بنجاح! مرحباً بك " + (response.user.first_name || response.user.username),
           showConfirmButton: false,
           timer: 3000
         });
         onOpenChange(false);
         resetForm();
-        
+
         // Redirect to home and scroll to top
         navigate('/');
         window.scrollTo({ top: 0, behavior: 'smooth' });

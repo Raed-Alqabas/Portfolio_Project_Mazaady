@@ -68,34 +68,31 @@ export function CarsPage() {
 
         {/* Search and Filters */}
         <Card className="mb-6 border-0 shadow-sm">
-          <CardContent className="p-6">
-            <div className="grid md:grid-cols-12 gap-4">
-              <div className="md:col-span-8">
-                <form onSubmit={handleSearch} className="relative">
-                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row items-center gap-4">
+              <form onSubmit={handleSearch} className="flex-1 flex items-center gap-2 w-full md:w-auto">
+                <div className="relative flex-1">
+                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
                     type="text"
                     placeholder="ابحث عن سيارة..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pr-10 bg-gray-50 border-gray-200"
+                    className="pr-9 bg-gray-50 border-gray-200"
                   />
-                  <Button type="submit" className="absolute left-1 top-1/2 -translate-y-1/2 h-8 px-3" size="sm">
-                    بحث
-                  </Button>
-                </form>
-              </div>
-              <div className="md:col-span-4 flex items-center justify-end">
-                <Badge variant="secondary" className="text-sm bg-primary/10 text-primary border-primary/20">
-                  {filteredCars.length} سيارة
-                </Badge>
-              </div>
+                </div>
+                <Button type="submit" size="sm">بحث</Button>
+              </form>
+
+              <Badge variant="secondary" className="mr-auto md:mr-0 bg-primary/10 text-primary border-primary/20 whitespace-nowrap">
+                {filteredCars.length} سيارة
+              </Badge>
             </div>
           </CardContent>
         </Card>
 
         {/* Cars Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
           {isLoading ? (
             <div className="col-span-full flex justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />

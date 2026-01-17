@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate, useOutletContext } from "react-router";
 import { Heart, Clock, TrendingUp, Trash2, Grid3x3, List, Search } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
@@ -7,6 +7,7 @@ import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { toast } from "sonner";
+import Swal from "sweetalert2";
 import axios from "../api/axios";
 
 interface FavoriteAuction {
@@ -22,6 +23,8 @@ interface FavoriteAuction {
 }
 
 export function FavoritesPage() {
+  const navigate = useNavigate();
+  const { user }: any = useOutletContext();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("recent");
@@ -29,8 +32,20 @@ export function FavoritesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!user && !localStorage.getItem('access')) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'يجب تسجيل الدخول',
+        text: 'يرجى تسجيل الدخول للوصول إلى المفضلة',
+        confirmButtonText: 'حسناً',
+        confirmButtonColor: '#1e3a5f'
+      }).then(() => {
+        navigate('/');
+      });
+      return;
+    }
     fetchFavorites();
-  }, []);
+  }, [user, navigate]);
 
   const fetchFavorites = async () => {
     try {
@@ -58,7 +73,7 @@ export function FavoritesPage() {
   const handleRemoveFavorite = async (id: number, title: string) => {
     try {
       await axios.delete(`/favorites/${id}/remove/`);
-      setFavorites(favorites.filter((fav) => fav.id !== id));
+      setFavorites(favorites.filter((fav: FavoriteAuction) => fav.id !== id));
       toast.success(`تم إزالة "${title}" من المفضلة`);
     } catch (error) {
       console.error('Error removing favorite:', error);
@@ -91,7 +106,7 @@ export function FavoritesPage() {
     }
   };
 
-  const filteredFavorites = favorites.filter((fav) =>
+  const filteredFavorites = favorites.filter((fav: FavoriteAuction) =>
     fav.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 

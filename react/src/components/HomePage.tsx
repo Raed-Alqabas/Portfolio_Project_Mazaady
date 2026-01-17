@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Gavel, Car, TrendingUp, Clock, Shield, Users, Search, MapPin, Phone, Mail, ArrowRight, Star, Award, CheckCircle, Heart } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Input } from "./ui/input";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import Swal from "sweetalert2";
+import { Textarea } from "./ui/textarea";
 
 import { HeroSection } from "./HeroSection";
 import api from "../api/axios";
@@ -14,6 +16,7 @@ import { calculateTimeRemaining, calculateTimeUntilStart } from "../utils/timeUt
 
 
 export function HomePage() {
+  const navigate = useNavigate();
   const [activeCars, setActiveCars] = useState<any[]>([]);
   const [soonCars, setSoonCars] = useState<any[]>([]);
   const [closedCars, setClosedCars] = useState<any[]>([]);
@@ -23,6 +26,13 @@ export function HomePage() {
   const [region, setRegion] = useState("all");
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    subject: "",
+    message: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchActiveCars();
@@ -124,7 +134,12 @@ export function HomePage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchActiveCars(searchTerm);
+    const params = new URLSearchParams();
+    if (searchTerm) params.append("search", searchTerm);
+    if (carType && carType !== "all") params.append("type", carType);
+    if (region && region !== "all") params.append("region", region);
+
+    navigate(`/auctions?${params.toString()}`);
   };
 
   const features = [
@@ -149,6 +164,34 @@ export function HomePage() {
       description: "احصل على أفضل العروض والصفقات",
     },
   ];
+
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await api.post("/contact/", formData);
+      Swal.fire({
+        icon: "success",
+        title: "تم الإرسال!",
+        text: "شكراً لتواصلك معنا، سنرد عليك قريباً.",
+        confirmButtonColor: "#1e3a8a",
+      });
+      setFormData({ name: "", email: "", subject: "", message: "" });
+    } catch (error: any) {
+      Swal.fire({
+        icon: "error",
+        title: "خطأ",
+        text: error.response?.data?.error || "حدث خطأ أثناء الإرسال، حاول مرة أخرى.",
+        confirmButtonColor: "#1e3a8a",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
 
   return (
@@ -184,9 +227,13 @@ export function HomePage() {
                     <SelectContent>
                       <SelectItem value="all">جميع الأنواع</SelectItem>
                       <SelectItem value="sedan">سيدان</SelectItem>
-                      <SelectItem value="suv">دفع رباعي</SelectItem>
+                      <SelectItem value="suv">دفع رباعي (SUV)</SelectItem>
                       <SelectItem value="sports">رياضية</SelectItem>
                       <SelectItem value="truck">شاحنة</SelectItem>
+                      <SelectItem value="coupe">كوبيه</SelectItem>
+                      <SelectItem value="convertible">كشف</SelectItem>
+                      <SelectItem value="van">فان / عائلي</SelectItem>
+                      <SelectItem value="hatchback">هاتشباك</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -201,8 +248,22 @@ export function HomePage() {
                       <SelectItem value="riyadh">الرياض</SelectItem>
                       <SelectItem value="jeddah">جدة</SelectItem>
                       <SelectItem value="dammam">الدمام</SelectItem>
-                      <SelectItem value="makkah">مكة</SelectItem>
-                      <SelectItem value="madinah">المدينة</SelectItem>
+                      <SelectItem value="makkah">مكة المكرمة</SelectItem>
+                      <SelectItem value="madinah">المدينة المنورة</SelectItem>
+                      <SelectItem value="khobar">الخبر</SelectItem>
+                      <SelectItem value="dhahran">الظهران</SelectItem>
+                      <SelectItem value="ahsa">الأحساء</SelectItem>
+                      <SelectItem value="taif">الطائف</SelectItem>
+                      <SelectItem value="tabuk">تبوك</SelectItem>
+                      <SelectItem value="hail">حائل</SelectItem>
+                      <SelectItem value="abha">أبها</SelectItem>
+                      <SelectItem value="khamis">خميس مشيط</SelectItem>
+                      <SelectItem value="jazan">جازان</SelectItem>
+                      <SelectItem value="najran">نجران</SelectItem>
+                      <SelectItem value="buraidah">بريدة</SelectItem>
+                      <SelectItem value="unaizah">عنيزة</SelectItem>
+                      <SelectItem value="jubail">الجبيل</SelectItem>
+                      <SelectItem value="yanbu">ينبع</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -299,7 +360,7 @@ export function HomePage() {
                             </div>
                             <span>{car.year}</span>
                           </div>
-                          
+
                           {/* Heart Icon in Footer */}
                           <button
                             onClick={(e) => toggleFavorite(car.id, e)}
@@ -324,11 +385,11 @@ export function HomePage() {
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h2 className="mb-2">تبدأ قريباً</h2>
-                  <p className="text-gray-600">مزادات تمت مراجعتها وستبدأ في الموعد المحدد</p>
+                  <p className="text-gray-600">مزادات سوف تبدأ قريباً</p>
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                 {soonCars.map((car) => {
                   const mainImage = car.images?.[0]?.image;
 
@@ -393,7 +454,7 @@ export function HomePage() {
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-6 opacity-80">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 opacity-80">
                 {closedCars.map((car) => {
                   const mainImage = car.images?.[0]?.image;
 
@@ -461,9 +522,9 @@ export function HomePage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, index) => (
-              <Card key={index} className="text-center">
+              <Card key={index} className="text-center pb-4 transition-all duration-500 ease-in-out hover:scale-115 hover:shadow-xl hover:bg-blue-50/30 cursor-default">
                 <CardHeader>
                   <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
                     <feature.icon className="w-6 h-6 text-blue-600" />
@@ -488,69 +549,57 @@ export function HomePage() {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-8">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Mail className="w-7 h-7 text-blue-600" />
+            <Card className="max-w-2xl mx-auto shadow-lg border-blue-100">
+              <CardContent className="p-8">
+                <form onSubmit={handleFormSubmit} className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">الأسم</label>
+                      <Input
+                        name="name"
+                        value={formData.name}
+                        onChange={handleFormChange}
+                        placeholder="أدخل اسمك الكامل"
+                        required
+                      />
                     </div>
-                    <div>
-                      <h3 className="mb-1">البريد الإلكتروني</h3>
-                      <p className="text-sm text-gray-600">راسلنا في أي وقت</p>
-                    </div>
-                  </div>
-                  <a
-                    href="mailto:info@mazady.sa"
-                    className="text-blue-600 hover:text-blue-700 transition-colors block p-3 bg-blue-50 rounded-lg text-center"
-                  >
-                    info@mazady.sa
-                  </a>
-                  <p className="text-xs text-gray-500 mt-3 text-center">
-                    سنرد عليك خلال 24 ساعة
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-8">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center">
-                      <Phone className="w-7 h-7 text-green-600" />
-                    </div>
-                    <div>
-                      <h3 className="mb-1">الهاتف</h3>
-                      <p className="text-sm text-gray-600">اتصل بنا مباشرة</p>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">البريد الإلكتروني</label>
+                      <Input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleFormChange}
+                        placeholder="example@mail.com"
+                        required
+                      />
                     </div>
                   </div>
-                  <a
-                    href="tel:+966920001234"
-                    className="text-green-600 hover:text-green-700 transition-colors block p-3 bg-green-50 rounded-lg text-center"
-                  >
-                    920001234
-                  </a>
-                  <p className="text-xs text-gray-500 mt-3 text-center">
-                    الأحد - الخميس (9 ص - 5 م)
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card className="mt-6 bg-blue-900 text-white">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Shield className="w-8 h-8" />
-                    <div>
-                      <p className="mb-1">خدمة عملاء متميزة</p>
-                      <p className="text-sm text-blue-200">نحن دائماً بجانبك لمساعدتك</p>
-                    </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">الموضوع</label>
+                    <Input
+                      name="subject"
+                      value={formData.subject}
+                      onChange={handleFormChange}
+                      placeholder="ما هو موضوع استفسارك؟"
+                      required
+                    />
                   </div>
-                  <Button variant="secondary" className="gap-2">
-                    <Mail className="w-4 h-4" />
-                    راسلنا الآن
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">الرسالة</label>
+                    <Textarea
+                      name="message"
+                      value={formData.message}
+                      onChange={handleFormChange}
+                      placeholder="اكتب رسالتك هنا..."
+                      required
+                      className="min-h-[150px]"
+                    />
+                  </div>
+                  <Button type="submit" className="w-full bg-blue-900 hover:bg-blue-800 h-12 text-lg" disabled={isSubmitting}>
+                    {isSubmitting ? "جاري الإرسال..." : "إرسال"}
                   </Button>
-                </div>
+                </form>
               </CardContent>
             </Card>
           </div>
