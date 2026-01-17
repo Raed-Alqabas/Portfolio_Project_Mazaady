@@ -11,6 +11,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "./ui/sheet";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { toast } from "sonner";
 import { Toaster } from "./ui/sonner";
@@ -29,19 +36,20 @@ export function RootLayout() {
   const [favoritesCount, setFavoritesCount] = useState(0);
   const [bidsCount, setBidsCount] = useState(0);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     fetchNotificationCounts();
     // Refresh counts every 30 seconds
     const interval = setInterval(fetchNotificationCounts, 30000);
-    
+
     // Listen for real-time favorites changes
     const handleFavoritesChange = () => {
       fetchNotificationCounts();
     };
-    
+
     window.addEventListener('favoritesChanged', handleFavoritesChange);
-    
+
     return () => {
       clearInterval(interval);
       window.removeEventListener('favoritesChanged', handleFavoritesChange);
@@ -115,11 +123,11 @@ export function RootLayout() {
     setBidsCount(0);
     setNotificationCount(0);
     localStorage.removeItem('user');
-    
+
     // Redirect to home and scroll to top
     navigate('/');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    
+
     toast.success("تم تسجيل الخروج بنجاح");
   };
 
@@ -220,43 +228,49 @@ export function RootLayout() {
             {/* Right Icons & Auth */}
             <div className="flex items-center gap-3 flex-shrink-0">
               {/* Favorites Icon */}
-              <Link to="/favorites">
-                <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group">
-                  <Heart className="w-6 h-6 text-gray-600 group-hover:text-accent transition-colors" />
-                  {favoritesCount > 0 && (
-                    <span className="absolute -top-1 -left-1 w-5 h-5 bg-accent text-white text-xs rounded-full flex items-center justify-center">
-                      {favoritesCount}
-                    </span>
-                  )}
-                </button>
-              </Link>
+              {user && (
+                <Link to="/favorites">
+                  <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group">
+                    <Heart className="w-6 h-6 text-gray-600 group-hover:text-accent transition-colors" />
+                    {favoritesCount > 0 && (
+                      <span className="absolute -top-1 -left-1 w-5 h-5 bg-accent text-white text-xs rounded-full flex items-center justify-center">
+                        {favoritesCount}
+                      </span>
+                    )}
+                  </button>
+                </Link>
+              )}
 
               {/* My Bids Icon */}
-              <Link to="/my-bids">
-                <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group">
-                  <Gavel className="w-6 h-6 text-gray-600 group-hover:text-accent transition-colors" />
-                  {bidsCount > 0 && (
-                    <span className="absolute -top-1 -left-1 w-5 h-5 bg-accent text-white text-xs rounded-full flex items-center justify-center">
-                      {bidsCount}
-                    </span>
-                  )}
-                </button>
-              </Link>
+              {user && (
+                <Link to="/my-bids">
+                  <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group">
+                    <Gavel className="w-6 h-6 text-gray-600 group-hover:text-accent transition-colors" />
+                    {bidsCount > 0 && (
+                      <span className="absolute -top-1 -left-1 w-5 h-5 bg-accent text-white text-xs rounded-full flex items-center justify-center">
+                        {bidsCount}
+                      </span>
+                    )}
+                  </button>
+                </Link>
+              )}
 
               {/* Notifications Icon */}
-              <Link to="/notifications">
-                <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group">
-                  <Bell className="w-6 h-6 text-gray-600 group-hover:text-accent transition-colors" />
-                  {(() => {
-                    console.log('Current notificationCount:', notificationCount);
-                    return notificationCount > 0 && (
-                      <span className="absolute -top-1 -left-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse shadow-lg">
-                        {notificationCount > 99 ? '99+' : notificationCount}
-                      </span>
-                    );
-                  })()}
-                </button>
-              </Link>
+              {user && (
+                <Link to="/notifications">
+                  <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group">
+                    <Bell className="w-6 h-6 text-gray-600 group-hover:text-accent transition-colors" />
+                    {(() => {
+                      console.log('Current notificationCount:', notificationCount);
+                      return notificationCount > 0 && (
+                        <span className="absolute -top-1 -left-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse shadow-lg">
+                          {notificationCount > 99 ? '99+' : notificationCount}
+                        </span>
+                      );
+                    })()}
+                  </button>
+                </Link>
+              )}
 
               {/* Divider */}
               <div className="h-8 w-px bg-gray-200"></div>
@@ -330,7 +344,69 @@ export function RootLayout() {
         {/* Navigation Bar - Second Row */}
         <div className="border-t border-gray-100 bg-gray-50/50">
           <div className="container mx-auto px-4">
-            <nav className="flex items-center justify-center gap-1 h-14">
+            {/* Mobile Menu Trigger & Search (Visible on Mobile) */}
+            <div className="lg:hidden">
+              <div className="flex items-center justify-between py-3">
+                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <ClipboardList className="w-6 h-6 text-gray-700" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                    <SheetHeader>
+                      <SheetTitle className="text-right">القائمة الرئيسية</SheetTitle>
+                    </SheetHeader>
+                    <div className="flex flex-col gap-4 mt-8">
+                      <Link to="/" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-2 text-lg">
+                          <Home className="w-5 h-5" />
+                          الرئيسية
+                        </Button>
+                      </Link>
+                      <Link to="/auctions" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-2 text-lg">
+                          <Gavel className="w-5 h-5" />
+                          المزادات
+                        </Button>
+                      </Link>
+                      <Link to="/cars" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-2 text-lg">
+                          <Car className="w-5 h-5" />
+                          السيارات
+                        </Button>
+                      </Link>
+                      {user && (
+                        <>
+                          <div className="h-px bg-gray-200 my-2" />
+                          <Link to="/favorites" onClick={() => setMobileMenuOpen(false)}>
+                            <Button variant="ghost" className="w-full justify-start gap-2 text-lg">
+                              <Heart className="w-5 h-5" />
+                              المفضلة
+                            </Button>
+                          </Link>
+                          <Link to="/my-bids" onClick={() => setMobileMenuOpen(false)}>
+                            <Button variant="ghost" className="w-full justify-start gap-2 text-lg">
+                              <Gavel className="w-5 h-5" />
+                              مزايداتي
+                            </Button>
+                          </Link>
+                          <Link to="/notifications" onClick={() => setMobileMenuOpen(false)}>
+                            <Button variant="ghost" className="w-full justify-start gap-2 text-lg">
+                              <Bell className="w-5 h-5" />
+                              الإشعارات
+                            </Button>
+                          </Link>
+                        </>
+                      )}
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
+            </div>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden lg:flex items-center justify-center gap-1 h-14">
               <Link to="/">
                 <Button
                   variant={isActive("/") && !isActive("/my-") && !isActive("/profile") && !isActive("/favorites") ? "default" : "ghost"}
@@ -400,7 +476,7 @@ export function RootLayout() {
                 </Link>
               </div>
               <p className="text-gray-400 text-sm leading-relaxed">
-                منصة مزادي الأولى في المملكة لمزايدات السيارات. نوفر بيئة آمنة وشفافة لشراء وبيع السيارات.
+                منصة مزادي - منصة بيع وشراء السيارات المستعملة وانت في بيتك
               </p>
             </div>
 
@@ -409,25 +485,27 @@ export function RootLayout() {
               <h4 className="mb-4 text-white">روابط سريعة</h4>
               <ul className="space-y-2">
                 <li>
+                  <Link to="/" className="text-gray-400 hover:text-white transition-colors text-sm">
+                    الرئيسية
+                  </Link>
+                </li>
+                <li>
                   <Link to="/auctions" className="text-gray-400 hover:text-white transition-colors text-sm">
-                    المزادات النشطة
+                    المزادات
                   </Link>
                 </li>
                 <li>
                   <Link to="/cars" className="text-gray-400 hover:text-white transition-colors text-sm">
-                    السيارات المتاحة
+                    السيارات
                   </Link>
                 </li>
-                <li>
-                  <Link to="/favorites" className="text-gray-400 hover:text-white transition-colors text-sm">
-                    المفضلة
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/my-bids" className="text-gray-400 hover:text-white transition-colors text-sm">
-                    مزايداتي
-                  </Link>
-                </li>
+                {user && (
+                  <li>
+                    <Link to="/my-bids" className="text-gray-400 hover:text-white transition-colors text-sm">
+                      مزايداتي
+                    </Link>
+                  </li>
+                )}
               </ul>
             </div>
 
@@ -465,7 +543,7 @@ export function RootLayout() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                   </svg>
                   <a href="tel:+966920001234" className="text-gray-400 hover:text-white transition-colors" dir="ltr">
-                    920001234 966+
+                    +966 920001234
                   </a>
                 </li>
                 <li className="flex items-start gap-2 text-sm">
@@ -486,7 +564,7 @@ export function RootLayout() {
                 © 2025 منصة مزادي. جميع الحقوق محفوظة
               </p>
               <div className="flex items-center gap-4">
-                <button 
+                <button
                   onClick={() => toast.info("قريبًا - صفحة الفيسبوك قيد الإنشاء")}
                   className="text-gray-400 hover:text-white transition-colors"
                   aria-label="Facebook"
@@ -495,8 +573,9 @@ export function RootLayout() {
                     <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                   </svg>
                 </button>
-                <button 
-                  onClick={() => toast.info("قريبًا - صفحة X (تويتر سابقًا) قيد الإنشاء")}
+                <button
+                  onClick={() => toast.info("قريباً - صفحة X قيد الإنشاء")}
+
                   className="text-gray-400 hover:text-white transition-colors"
                   aria-label="X (Twitter)"
                 >
@@ -504,7 +583,7 @@ export function RootLayout() {
                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                   </svg>
                 </button>
-                <button 
+                <button
                   onClick={() => toast.info("قريبًا - صفحة الإنستغرام قيد الإنشاء")}
                   className="text-gray-400 hover:text-white transition-colors"
                   aria-label="Instagram"

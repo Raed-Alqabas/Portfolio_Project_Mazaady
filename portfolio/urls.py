@@ -52,4 +52,7 @@ urlpatterns = [
     
     # Admin Dashboard
     path('admin/dashboard/', api_views.admin_dashboard_api, name='api-admin-dashboard'),
+    
+    # Contact Us
+    path('contact/', api_views.contact_us_api, name='api-contact'),
 ]

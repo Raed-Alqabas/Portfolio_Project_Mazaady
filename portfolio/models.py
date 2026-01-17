@@ -99,6 +99,7 @@ class Car(models.Model):
     transmission = models.CharField(max_length=50)
     engine_size = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
     cylinders = models.IntegerField(null=True, blank=True)
+    body_type = models.CharField(max_length=50, default='Sedan')  # Sedan, SUV, etc.
     
     # Condition
     condition = models.CharField(max_length=50)

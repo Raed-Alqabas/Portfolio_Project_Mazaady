@@ -26,6 +26,8 @@ const formatDuration = (minutes: number): string => {
 export function AuctionsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlSearch = searchParams.get("search") || "";
+  const urlType = searchParams.get("type") || "all";
+  const urlRegion = searchParams.get("region") || "all";
 
   const [filter, setFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState(urlSearch);
@@ -36,8 +38,8 @@ export function AuctionsPage() {
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   useEffect(() => {
-    fetchCars(urlSearch);
-  }, [urlSearch]);
+    fetchCars(urlSearch, urlType, urlRegion);
+  }, [urlSearch, urlType, urlRegion]);
 
   // Update time every second for live countdown
   useEffect(() => {
@@ -48,10 +50,10 @@ export function AuctionsPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const fetchCars = async (search = "") => {
+  const fetchCars = async (search = "", type = "all", region = "all") => {
     try {
       setIsLoading(true);
-      const response = await api.get(`/cars/public/?status=all&search=${search}`);
+      const response = await api.get(`/cars/public/?status=all&search=${search}&type=${type}&region=${region}`);
       const allCars = response.data;
       setActiveCars(allCars.filter((c: any) => c.status === 'ACTIVE'));
       setSoonCars(allCars.filter((c: any) => c.status === 'SOON'));
@@ -137,7 +139,7 @@ export function AuctionsPage() {
         </Card>
 
         {/* Auctions Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
           {isLoading ? (
             <div className="col-span-full flex justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>

@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate, useOutletContext } from "react-router";
 import { Gavel, Clock, Trophy, XCircle, CheckCircle, Heart, Users } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { toast } from "sonner";
+import Swal from "sweetalert2";
 import axios from "../api/axios";
 import api from "../api/axios";
 
@@ -23,12 +24,26 @@ interface BidData {
 }
 
 export function MyBidsPage() {
+  const navigate = useNavigate();
+  const { user }: any = useOutletContext();
   const [activeBids, setActiveBids] = useState<BidData[]>([]);
   const [completedBids, setCompletedBids] = useState<BidData[]>([]);
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
 
   useEffect(() => {
+    if (!user && !localStorage.getItem('access')) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'يجب تسجيل الدخول',
+        text: 'يرجى تسجيل الدخول للوصول إلى مزايداتي',
+        confirmButtonText: 'حسناً',
+        confirmButtonColor: '#1e3a5f'
+      }).then(() => {
+        navigate('/');
+      });
+      return;
+    }
     fetchBids();
     fetchUserFavorites();
 
@@ -42,7 +57,7 @@ export function MyBidsPage() {
 
     window.addEventListener('favoritesChanged', handleFavoritesChange);
     return () => window.removeEventListener('favoritesChanged', handleFavoritesChange);
-  }, []);
+  }, [user, navigate]);
 
   const fetchBids = async () => {
     try {
@@ -80,7 +95,7 @@ export function MyBidsPage() {
     try {
       if (isFavorited) {
         await api.delete(`/favorites/${carId}/remove/`);
-        setFavorites(prev => {
+        setFavorites((prev: Set<number>) => {
           const newSet = new Set(prev);
           newSet.delete(carId);
           localStorage.setItem('favorites', JSON.stringify(Array.from(newSet)));
@@ -90,7 +105,7 @@ export function MyBidsPage() {
         toast.success("تمت إزالة السيارة من المفضلة");
       } else {
         await api.post(`/favorites/${carId}/add/`);
-        setFavorites(prev => {
+        setFavorites((prev: Set<number>) => {
           const newSet = new Set(prev).add(carId);
           localStorage.setItem('favorites', JSON.stringify(Array.from(newSet)));
           window.dispatchEvent(new Event('favoritesChanged'));
@@ -129,7 +144,7 @@ export function MyBidsPage() {
 
           <TabsContent value="active" className="space-y-4">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {activeBids.map((bid) => (
+              {activeBids.map((bid: BidData) => (
                 <Link to={`/auction/${bid.id}`} key={bid.id} className="block group">
                   <div className="overflow-hidden rounded-lg border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
                     {/* Image Container */}
@@ -139,10 +154,10 @@ export function MyBidsPage() {
                         alt={bid.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
-                      
+
                       {/* Dark Gradient Overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
-                      
+
                       {/* Status Badge */}
                       {bid.status === "winning" ? (
                         <Badge className="absolute top-3 left-3 bg-green-500/90 text-white hover:bg-green-500 border-0 px-3 py-1 text-xs backdrop-blur-sm z-20 flex items-center gap-1">
@@ -155,7 +170,7 @@ export function MyBidsPage() {
                           تم تجاوزك
                         </Badge>
                       )}
-                      
+
                       {/* Favorite Button */}
                       <button
                         onClick={(e) => toggleFavorite(bid.id, e)}
@@ -163,7 +178,7 @@ export function MyBidsPage() {
                       >
                         <Heart className={`w-4 h-4 ${favorites.has(bid.id) ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
                       </button>
-                      
+
                       {/* Bottom Info Overlay */}
                       <div className="absolute bottom-0 left-0 right-0 p-3 flex items-end justify-between text-white z-10">
                         <div className="flex items-center gap-1">
@@ -173,12 +188,12 @@ export function MyBidsPage() {
                         <div className="text-left">
                           <div className="text-xs opacity-90">Bid</div>
                           <div className="flex items-baseline gap-1">
-                          <span className="font-medium">{(bid.currentBid || 0).toLocaleString()} ريال</span>
+                            <span className="font-medium">{(bid.currentBid || 0).toLocaleString()} ريال</span>
                           </div>
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Content */}
                     <div className="bg-white p-3 rounded-b-lg">
                       <h3 className="text-gray-900 text-sm font-semibold mb-2 line-clamp-1 text-right">{bid.title}</h3>
@@ -201,7 +216,7 @@ export function MyBidsPage() {
 
           <TabsContent value="completed" className="space-y-4">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {completedBids.map((bid) => (
+              {completedBids.map((bid: BidData) => (
                 <Link to={`/auction/${bid.id}`} key={bid.id} className="block group">
                   <div className="overflow-hidden rounded-lg border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
                     {/* Image Container */}
@@ -211,10 +226,10 @@ export function MyBidsPage() {
                         alt={bid.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
-                      
+
                       {/* Dark Gradient Overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
-                      
+
                       {/* Status Badge */}
                       {bid.status === "won" ? (
                         <Badge className="absolute top-3 left-3 bg-green-500/90 text-white hover:bg-green-500 border-0 px-3 py-1 text-xs backdrop-blur-sm z-20 flex items-center gap-1">
@@ -226,7 +241,7 @@ export function MyBidsPage() {
                           انتهى
                         </Badge>
                       )}
-                      
+
                       {/* Favorite Button */}
                       <button
                         onClick={(e) => toggleFavorite(bid.id, e)}
@@ -234,7 +249,7 @@ export function MyBidsPage() {
                       >
                         <Heart className={`w-4 h-4 ${favorites.has(bid.id) ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
                       </button>
-                      
+
                       {/* Bottom Info Overlay */}
                       <div className="absolute bottom-0 left-0 right-0 p-3 flex items-end justify-between text-white z-10">
                         <div className="text-sm">{bid.endDate}</div>
@@ -246,7 +261,7 @@ export function MyBidsPage() {
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Content */}
                     <div className="bg-white p-3 rounded-b-lg">
                       <h3 className="text-gray-900 text-sm font-semibold mb-2 line-clamp-1 text-right">{bid.title}</h3>

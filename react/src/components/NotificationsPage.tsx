@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate, useOutletContext } from "react-router";
 import { Bell, ArrowRight, Check, CheckCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
@@ -7,6 +7,7 @@ import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
 import axios from "../api/axios";
 import { toast } from "sonner";
+import Swal from "sweetalert2";
 
 interface Notification {
   id: number;
@@ -19,12 +20,26 @@ interface Notification {
 }
 
 export function NotificationsPage() {
+  const navigate = useNavigate();
+  const { user }: any = useOutletContext();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!user && !localStorage.getItem('access')) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'يجب تسجيل الدخول',
+        text: 'يرجى تسجيل الدخول للوصول إلى الإشعارات',
+        confirmButtonText: 'حسناً',
+        confirmButtonColor: '#1e3a5f'
+      }).then(() => {
+        navigate('/');
+      });
+      return;
+    }
     fetchNotifications();
-  }, []);
+  }, [user, navigate]);
 
   const fetchNotifications = async () => {
     try {
@@ -41,7 +56,7 @@ export function NotificationsPage() {
   const markAsRead = async (notificationId: number) => {
     try {
       await axios.post(`/notifications/${notificationId}/read/`);
-      setNotifications(notifications.map(n => 
+      setNotifications(notifications.map(n =>
         n.id === notificationId ? { ...n, is_read: true } : n
       ));
     } catch (error) {
@@ -86,7 +101,7 @@ export function NotificationsPage() {
     if (diffMins < 60) return `منذ ${diffMins} دقيقة`;
     if (diffHours < 24) return `منذ ${diffHours} ساعة`;
     if (diffDays < 7) return `منذ ${diffDays} يوم`;
-    
+
     return new Intl.DateTimeFormat('ar-SA', {
       year: 'numeric',
       month: 'long',
@@ -101,8 +116,8 @@ export function NotificationsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-12" dir="rtl">
       <div className="container mx-auto px-4 max-w-3xl">
-        <Link 
-          to="/" 
+        <Link
+          to="/"
           className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-8 transition-colors font-medium"
         >
           <ArrowRight className="w-5 h-5" />
@@ -126,7 +141,7 @@ export function NotificationsPage() {
                 </div>
               </div>
               {unreadCount > 0 && (
-                <Button 
+                <Button
                   onClick={markAllAsRead}
                   variant="outline"
                   size="sm"
@@ -152,15 +167,14 @@ export function NotificationsPage() {
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`p-6 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200 ${
-                      !notification.is_read ? 'bg-gradient-to-r from-blue-50/50 to-purple-50/50 border-l-4 border-blue-500' : ''
-                    }`}
+                    className={`p-6 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200 ${!notification.is_read ? 'bg-gradient-to-r from-blue-50/50 to-purple-50/50 border-l-4 border-blue-500' : ''
+                      }`}
                   >
                     <div className="flex items-start gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-3">
-                          <Badge 
-                            variant="outline" 
+                          <Badge
+                            variant="outline"
                             className={`text-sm font-bold px-3 py-1 ${getNotificationColor(notification.type)}`}
                           >
                             {notification.title}
@@ -192,9 +206,9 @@ export function NotificationsPage() {
                         )}
                         {notification.link && (
                           <Link to={notification.link}>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <Button
+                              variant="outline"
+                              size="sm"
                               className="h-10 px-4 bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-200 font-medium"
                             >
                               عرض
