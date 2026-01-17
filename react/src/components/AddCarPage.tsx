@@ -694,25 +694,6 @@ export function AddCarPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="reservePrice">السعر الاحتياطي (ريال)</Label>
-                  <Input
-                    id="reservePrice"
-                    type="number"
-                    placeholder="90000"
-                    value={formData.reservePrice}
-                    onChange={(e) => handleInputChange("reservePrice", e.target.value)}
-                    min={1}
-                    className={validationErrors.reservePrice ? "border-red-500" : ""}
-                  />
-                  {validationErrors.reservePrice && (
-                    <p className="text-sm text-red-500">{validationErrors.reservePrice}</p>
-                  )}
-                  <p className="text-xs text-gray-500">
-                    الحد الأدنى للسعر الذي ترغب في بيع السيارة به
-                  </p>
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="auctionDuration">مدة المزاد *</Label>
                   <Select value={formData.auctionDuration} onValueChange={(value: string) => handleInputChange("auctionDuration", value)}>
                     <SelectTrigger id="auctionDuration">
