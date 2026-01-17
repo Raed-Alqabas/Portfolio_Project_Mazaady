@@ -12,7 +12,7 @@ class Command(BaseCommand):
         now = timezone.now()
         
         # 1. Activate Pending/Soon Auctions
-        pending_soon_cars = Car.objects.filter(status__in=['PENDING', 'SOON'])
+        pending_soon_cars = Car.objects.filter(status='SOON')
         activated_count = 0
         for car in pending_soon_cars:
             # If start_date is set and passed, or if no start_date (immediate), activate

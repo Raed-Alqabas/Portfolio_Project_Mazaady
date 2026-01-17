@@ -15,7 +15,15 @@ import {
   AlertCircle,
   BarChart3,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  ChevronDown,
+  ChevronUp,
+  Image as ImageIcon,
+  FileText,
+  MapPin,
+  ChevronLeft,
+  ChevronRight,
+  Trash2
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -70,6 +78,16 @@ interface DashboardData {
       seller: string;
       status: string;
       time: string;
+      images?: string[];
+      brand?: string;
+      model?: string;
+      year?: number;
+      mileage?: number;
+      color?: string;
+      location?: string;
+      description?: string;
+      start_bid?: number;
+      auction_duration?: number;
     }>;
   };
   notifications: {
@@ -89,6 +107,9 @@ export function AdminDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [processingCarId, setProcessingCarId] = useState<number | null>(null);
+  const [expandedCarId, setExpandedCarId] = useState<number | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState<{[key: number]: number}>({});
+  const [deleteConfirmCarId, setDeleteConfirmCarId] = useState<number | null>(null);
 
   useEffect(() => {
     checkAdminAndFetchData();
@@ -163,6 +184,21 @@ export function AdminDashboardPage() {
     } catch (error: any) {
       console.error('Error rejecting car:', error);
       toast.error(error.response?.data?.error || 'فشل رفض السيارة');
+    } finally {
+      setProcessingCarId(null);
+    }
+  };
+
+  const handleDeleteCar = async (carId: number) => {
+    setProcessingCarId(carId);
+    try {
+      await axios.delete(`/admin/cars/${carId}/delete/`);
+      toast.success('تم حذف السيارة بنجاح');
+      setDeleteConfirmCarId(null);
+      fetchDashboardData();
+    } catch (error: any) {
+      console.error('Error deleting car:', error);
+      toast.error(error.response?.data?.error || 'فشل حذف السيارة');
     } finally {
       setProcessingCarId(null);
     }
@@ -480,64 +516,525 @@ export function AdminDashboardPage() {
           </Card>
         </div>
 
-        {/* Recent Cars */}
+        {/* Review Section */}
         <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm mt-6 shadow-xl shadow-black/50">
           <CardHeader>
             <CardTitle className="text-cyan-300 flex items-center gap-2">
               <Package className="w-5 h-5 text-primary" />
-              أحدث السيارات
+              قسم المراجعات
             </CardTitle>
-            <CardDescription className="text-slate-300">آخر الإعلانات المضافة</CardDescription>
+            <CardDescription className="text-slate-300">مراجعة والموافقة على السيارات المعلقة</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
-              {data.recentActivity.recentCars.map((car, index) => (
-                <div key={index} className="p-3 bg-slate-700/30 rounded-lg hover:bg-slate-700/50 transition-colors">
-                  {car.status === 'IN_REVIEW' ? (
-                    <>
-                      <p className="text-slate-100 font-medium text-sm mb-2 truncate">{car.title}</p>
-                      <p className="text-xs text-slate-300 mb-3">بواسطة {car.seller}</p>
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => handleApproveCar(car.id)}
-                          disabled={processingCarId === car.id}
-                          size="sm"
-                          className="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs h-7"
-                        >
-                          <CheckCircle className="w-3 h-3 ml-1" />
-                          قبول
-                        </Button>
-                        <Button
-                          onClick={() => handleRejectCar(car.id)}
-                          disabled={processingCarId === car.id}
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 border-red-200 text-red-600 hover:bg-red-50 text-xs h-7"
-                        >
-                          <XCircle className="w-3 h-3 ml-1" />
-                          رفض
-                        </Button>
+            <div className="space-y-4">
+              {data.recentActivity.recentCars.filter(car => car.status === 'IN_REVIEW').length === 0 && (
+                <p className="text-center text-slate-500 py-8">لا توجد سيارات في انتظار المراجعة</p>
+              )}
+              
+              {data.recentActivity.recentCars.filter(car => car.status === 'IN_REVIEW').map((car, index) => (
+                <Card key={index} className="bg-slate-700/30 border-slate-600/50 overflow-hidden">
+                  <CardContent className="p-0">
+                    {/* Header Row */}
+                    <div 
+                      className="p-4 cursor-pointer hover:bg-slate-700/50 transition-colors"
+                      onClick={() => setExpandedCarId(expandedCarId === car.id ? null : car.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-slate-100 font-semibold text-lg">{car.title}</h3>
+                            <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20">
+                              قيد المراجعة
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-slate-300">
+                            <span className="flex items-center gap-1">
+                              <UserPlus className="w-4 h-4" />
+                              بواسطة: {car.seller}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              منذ {car.time}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          {expandedCarId === car.id ? (
+                            <ChevronUp className="w-5 h-5 text-slate-400" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-slate-400" />
+                          )}
+                        </div>
                       </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex items-start justify-between mb-2">
-                        <Badge className={getStatusColor(car.status)}>{car.status}</Badge>
-                        <span className="text-xs text-slate-400">منذ {car.time}</span>
+                    </div>
+
+                    {/* Expanded Details */}
+                    {expandedCarId === car.id && (
+                      <div className="border-t border-slate-600/50 p-4 space-y-4 bg-slate-800/30">
+                        {/* Car Images Carousel */}
+                        {car.images && car.images.length > 0 && (
+                          <div>
+                            <h4 className="text-slate-200 font-medium mb-2 flex items-center gap-2">
+                              <ImageIcon className="w-4 h-4 text-primary" />
+                              صور السيارة ({car.images.length} صورة)
+                            </h4>
+                            <div className="relative bg-slate-900/50 rounded-lg overflow-hidden">
+                              {/* Main Image - Full Size */}
+                              <div className="relative">
+                                <img 
+                                  src={car.images[currentImageIndex[car.id] || 0]} 
+                                  alt={`${car.title}`}
+                                  className="w-full h-auto object-contain rounded-lg"
+                                  style={{ maxHeight: '500px' }}
+                                />
+                                
+                                {/* Image Counter - Page Number */}
+                                <div className="absolute top-4 right-4 bg-white px-4 py-2 rounded-lg text-sm font-bold shadow-xl">
+                                  <span className="text-slate-800">{(currentImageIndex[car.id] || 0) + 1}</span>
+                                  <span className="text-slate-400 mx-1">/</span>
+                                  <span className="text-slate-800">{car.images.length}</span>
+                                </div>
+                              </div>
+                              
+                              {/* Navigation Arrows - Only show if more than 1 image */}
+                              {car.images.length > 1 && (
+                                <>
+                                  {/* Right Arrow - Next Image (Increase) */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const current = currentImageIndex[car.id] || 0;
+                                      const newIndex = current === car.images.length - 1 ? 0 : current + 1;
+                                      setCurrentImageIndex(prev => ({ ...prev, [car.id]: newIndex }));
+                                    }}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 p-3 rounded-full transition-all shadow-lg"
+                                  >
+                                    <ChevronRight className="w-6 h-6" />
+                                  </button>
+                                  
+                                  {/* Left Arrow - Previous Image (Decrease) */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const current = currentImageIndex[car.id] || 0;
+                                      const newIndex = current === 0 ? car.images.length - 1 : current - 1;
+                                      setCurrentImageIndex(prev => ({ ...prev, [car.id]: newIndex }));
+                                    }}
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 p-3 rounded-full transition-all shadow-lg"
+                                  >
+                                    <ChevronLeft className="w-6 h-6" />
+                                  </button>
+                                  
+                                  {/* Image Counter Dots */}
+                                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                                    {car.images.map((_, idx) => (
+                                      <div
+                                        key={idx}
+                                        className={`w-2 h-2 rounded-full transition-all ${
+                                          (currentImageIndex[car.id] || 0) === idx
+                                            ? 'bg-white w-8'
+                                            : 'bg-white/50'
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Car Details Grid */}
+                        <div>
+                          <h4 className="text-slate-200 font-medium mb-2 flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-primary" />
+                            تفاصيل السيارة
+                          </h4>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {car.brand && (
+                              <div className="bg-slate-700/50 p-3 rounded-lg">
+                                <p className="text-xs text-slate-400 mb-1">الماركة</p>
+                                <p className="text-slate-100">{car.brand}</p>
+                              </div>
+                            )}
+                            {car.model && (
+                              <div className="bg-slate-700/50 p-3 rounded-lg">
+                                <p className="text-xs text-slate-400 mb-1">الموديل</p>
+                                <p className="text-slate-100">{car.model}</p>
+                              </div>
+                            )}
+                            {car.year && (
+                              <div className="bg-slate-700/50 p-3 rounded-lg">
+                                <p className="text-xs text-slate-400 mb-1">السنة</p>
+                                <p className="text-slate-100">{car.year}</p>
+                              </div>
+                            )}
+                            {car.mileage && (
+                              <div className="bg-slate-700/50 p-3 rounded-lg">
+                                <p className="text-xs text-slate-400 mb-1">المسافة المقطوعة</p>
+                                <p className="text-slate-100">{car.mileage.toLocaleString()} كم</p>
+                              </div>
+                            )}
+                            {car.color && (
+                              <div className="bg-slate-700/50 p-3 rounded-lg">
+                                <p className="text-xs text-slate-400 mb-1">اللون</p>
+                                <p className="text-slate-100">{car.color}</p>
+                              </div>
+                            )}
+                            {car.location && (
+                              <div className="bg-slate-700/50 p-3 rounded-lg">
+                                <p className="text-xs text-slate-400 mb-1">الموقع</p>
+                                <p className="text-slate-100 flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {car.location}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Auction Details */}
+                        {car.start_bid && (
+                          <div>
+                            <h4 className="text-slate-200 font-medium mb-2 flex items-center gap-2">
+                              <Gavel className="w-4 h-4 text-primary" />
+                              تفاصيل المزاد
+                            </h4>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="bg-slate-700/50 p-3 rounded-lg">
+                                <p className="text-xs text-slate-400 mb-1">سعر البداية</p>
+                                <p className="text-slate-100 font-semibold">{car.start_bid?.toLocaleString()} ر.س</p>
+                              </div>
+                              {car.auction_duration && (
+                                <div className="bg-slate-700/50 p-3 rounded-lg">
+                                  <p className="text-xs text-slate-400 mb-1">مدة المزاد</p>
+                                  <p className="text-slate-100">{car.auction_duration} أيام</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Description */}
+                        {car.description && (
+                          <div>
+                            <h4 className="text-slate-200 font-medium mb-2">الوصف</h4>
+                            <p className="text-slate-300 text-sm bg-slate-700/50 p-3 rounded-lg">
+                              {car.description}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-3 pt-2">
+                          <Button
+                            onClick={() => handleApproveCar(car.id)}
+                            disabled={processingCarId === car.id}
+                            size="lg"
+                            variant="outline"
+                            className="flex-1 border-green-500 text-green-500 hover:bg-green-500 hover:text-white hover:border-green-600 transition-colors"
+                          >
+                            <CheckCircle className="w-4 h-4 ml-2" />
+                            قبول السيارة
+                          </Button>
+                          <Button
+                            onClick={() => handleRejectCar(car.id)}
+                            disabled={processingCarId === car.id}
+                            size="lg"
+                            variant="outline"
+                            className="flex-1 border-red-500 text-red-500 hover:bg-red-500 hover:text-white hover:border-red-600 transition-colors"
+                          >
+                            <XCircle className="w-4 h-4 ml-2" />
+                            رفض السيارة
+                          </Button>
+                        </div>
                       </div>
-                      <p className="text-slate-100 font-medium text-sm mb-1 truncate">{car.title}</p>
-                      <p className="text-xs text-slate-300">بواسطة {car.seller}</p>
-                    </>
-                  )}
-                </div>
+                    )}
+                  </CardContent>
+                </Card>
               ))}
-              {data.recentActivity.recentCars.length === 0 && (
-                <p className="text-center text-slate-500 py-4 col-span-full">لا توجد سيارات بعد</p>
+              
+              {/* Non-Review Cars (Already Processed) */}
+              {data.recentActivity.recentCars.filter(car => car.status !== 'IN_REVIEW').length > 0 && (
+                <div className="mt-8 space-y-4">
+                  <h3 className="text-slate-300 text-lg font-semibold mb-4">آخر السيارات المعالجة</h3>
+                  
+                  {data.recentActivity.recentCars.filter(car => car.status !== 'IN_REVIEW').map((car, index) => (
+                    <Card key={index} className="bg-slate-700/30 border-slate-600/50 overflow-hidden">
+                      <CardContent className="p-0">
+                        {/* Header Row */}
+                        <div 
+                          className="p-4 cursor-pointer hover:bg-slate-700/50 transition-colors"
+                          onClick={() => setExpandedCarId(expandedCarId === car.id ? null : car.id)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <h3 className="text-slate-100 font-semibold text-lg">{car.title}</h3>
+                                <Badge className={getStatusColor(car.status)}>{car.status}</Badge>
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-slate-300">
+                                <span className="flex items-center gap-1">
+                                  <UserPlus className="w-4 h-4" />
+                                  بواسطة: {car.seller}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-4 h-4" />
+                                  منذ {car.time}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              {expandedCarId === car.id ? (
+                                <ChevronUp className="w-5 h-5 text-slate-400" />
+                              ) : (
+                                <ChevronDown className="w-5 h-5 text-slate-400" />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Expanded Details - Same as pending review */}
+                        {expandedCarId === car.id && (
+                          <div className="border-t border-slate-600/50 p-4 space-y-4 bg-slate-800/30">
+                            {/* Car Images Carousel - Same as above */}
+                            {car.images && car.images.length > 0 && (
+                              <div>
+                                <h4 className="text-slate-200 font-medium mb-2 flex items-center gap-2">
+                                  <ImageIcon className="w-4 h-4 text-primary" />
+                                  صور السيارة ({car.images.length} صورة)
+                                </h4>
+                                <div className="relative bg-slate-900/50 rounded-lg overflow-hidden">
+                                  <div className="relative">
+                                    <img 
+                                      src={car.images[currentImageIndex[car.id] || 0]} 
+                                      alt={`${car.title}`}
+                                      className="w-full h-auto object-contain rounded-lg"
+                                      style={{ maxHeight: '500px' }}
+                                    />
+                                    
+                                    <div className="absolute top-4 right-4 bg-white px-4 py-2 rounded-lg text-sm font-bold shadow-xl">
+                                      <span className="text-slate-800">{(currentImageIndex[car.id] || 0) + 1}</span>
+                                      <span className="text-slate-400 mx-1">/</span>
+                                      <span className="text-slate-800">{car.images.length}</span>
+                                    </div>
+                                  </div>
+                                  
+                                  {car.images.length > 1 && (
+                                    <>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const current = currentImageIndex[car.id] || 0;
+                                          const newIndex = current === car.images.length - 1 ? 0 : current + 1;
+                                          setCurrentImageIndex(prev => ({ ...prev, [car.id]: newIndex }));
+                                        }}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 p-3 rounded-full transition-all shadow-lg"
+                                      >
+                                        <ChevronRight className="w-6 h-6" />
+                                      </button>
+                                      
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const current = currentImageIndex[car.id] || 0;
+                                          const newIndex = current === 0 ? car.images.length - 1 : current - 1;
+                                          setCurrentImageIndex(prev => ({ ...prev, [car.id]: newIndex }));
+                                        }}
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 p-3 rounded-full transition-all shadow-lg"
+                                      >
+                                        <ChevronLeft className="w-6 h-6" />
+                                      </button>
+                                      
+                                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                                        {car.images.map((_, idx) => (
+                                          <div
+                                            key={idx}
+                                            className={`w-2 h-2 rounded-full transition-all ${
+                                              (currentImageIndex[car.id] || 0) === idx
+                                                ? 'bg-white w-8'
+                                                : 'bg-white/50'
+                                            }`}
+                                          />
+                                        ))}
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Car Details same as review section - copying structure */}
+                            <div>
+                              <h4 className="text-slate-200 font-medium mb-2 flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-primary" />
+                                تفاصيل السيارة
+                              </h4>
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                {car.brand && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">الماركة</p>
+                                    <p className="text-slate-100">{car.brand}</p>
+                                  </div>
+                                )}
+                                {car.model && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">الموديل</p>
+                                    <p className="text-slate-100">{car.model}</p>
+                                  </div>
+                                )}
+                                {car.year && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">السنة</p>
+                                    <p className="text-slate-100">{car.year}</p>
+                                  </div>
+                                )}
+                                {car.mileage && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">المسافة المقطوعة</p>
+                                    <p className="text-slate-100">{car.mileage.toLocaleString()} كم</p>
+                                  </div>
+                                )}
+                                {car.color && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">اللون</p>
+                                    <p className="text-slate-100">{car.color}</p>
+                                  </div>
+                                )}
+                                {car.location && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">الموقع</p>
+                                    <p className="text-slate-100 flex items-center gap-1">
+                                      <MapPin className="w-3 h-3" />
+                                      {car.location}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {car.start_bid && (
+                              <div>
+                                <h4 className="text-slate-200 font-medium mb-2 flex items-center gap-2">
+                                  <Gavel className="w-4 h-4 text-primary" />
+                                  تفاصيل المزاد
+                                </h4>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">سعر البداية</p>
+                                    <p className="text-slate-100 font-semibold">{car.start_bid?.toLocaleString()} ر.س</p>
+                                  </div>
+                                  {car.auction_duration && (
+                                    <div className="bg-slate-700/50 p-3 rounded-lg">
+                                      <p className="text-xs text-slate-400 mb-1">مدة المزاد</p>
+                                      <p className="text-slate-100">{car.auction_duration} أيام</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {car.description && (
+                              <div>
+                                <h4 className="text-slate-200 font-medium mb-2">الوصف</h4>
+                                <p className="text-slate-300 text-sm bg-slate-700/50 p-3 rounded-lg">
+                                  {car.description}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Action Buttons - Conditional based on status */}
+                            <div className="flex gap-3 pt-2">
+                              {/* Show Accept button only if car is REJECTED */}
+                              {car.status === 'REJECTED' && (
+                                <Button
+                                  onClick={() => handleApproveCar(car.id)}
+                                  disabled={processingCarId === car.id}
+                                  size="lg"
+                                  variant="outline"
+                                  className="flex-1 border-green-500 text-green-500 hover:bg-green-500 hover:text-white hover:border-green-600 transition-colors"
+                                >
+                                  <CheckCircle className="w-4 h-4 ml-2" />
+                                  قبول
+                                </Button>
+                              )}
+                              
+                              {/* Show Reject button only if car is SOON or ACTIVE */}
+                              {(car.status === 'SOON' || car.status === 'ACTIVE') && (
+                                <Button
+                                  onClick={() => handleRejectCar(car.id)}
+                                  disabled={processingCarId === car.id}
+                                  size="lg"
+                                  variant="outline"
+                                  className="flex-1 border-red-500 text-red-500 hover:bg-red-500 hover:text-white hover:border-red-600 transition-colors"
+                                >
+                                  <XCircle className="w-4 h-4 ml-2" />
+                                  رفض
+                                </Button>
+                              )}
+                              
+                              {/* Always show Delete button */}
+                              <Button
+                                onClick={() => setDeleteConfirmCarId(car.id)}
+                                disabled={processingCarId === car.id}
+                                size="lg"
+                                variant="outline"
+                                className="flex-1 border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white hover:border-orange-600 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4 ml-2" />
+                                حذف
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               )}
             </div>
           </CardContent>
         </Card>
       </div>
+      
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmCarId !== null && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl">
+            <div className="text-center">
+              <div className="mb-4 flex justify-center">
+                <div className="bg-orange-500/10 p-3 rounded-full">
+                  <Trash2 className="w-8 h-8 text-orange-500" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-slate-100 mb-2">تأكيد الحذف</h3>
+              <p className="text-slate-300 mb-6">
+                هل أنت متأكد من حذف هذه السيارة؟ لا يمكن التراجع عن هذا الإجراء.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setDeleteConfirmCarId(null)}
+                  variant="outline"
+                  className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
+                  disabled={processingCarId !== null}
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  onClick={() => handleDeleteCar(deleteConfirmCarId)}
+                  variant="outline"
+                  className="flex-1 border-orange-500 bg-orange-500 text-white hover:bg-orange-600 hover:border-orange-600"
+                  disabled={processingCarId !== null}
+                >
+                  {processingCarId === deleteConfirmCarId ? 'جاري الحذف...' : 'نعم، احذف'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

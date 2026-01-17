@@ -121,7 +121,6 @@ class Car(models.Model):
     winner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='won_cars')
     
     STATUS_CHOICES = [
-        ('PENDING', 'Pending'),
         ('IN_REVIEW', 'In Review'),
         ('SOON', 'Soon'),
         ('ACTIVE', 'Active'),

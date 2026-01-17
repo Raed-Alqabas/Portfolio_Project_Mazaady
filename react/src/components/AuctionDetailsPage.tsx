@@ -512,7 +512,7 @@ export function AuctionDetailsPage() {
 
                       <div>
                         <label className="text-sm text-gray-600 mb-2 block">
-                          مبلغ المزايدة (الحد الأدنى: {(currentBidNum + 1000).toLocaleString()} ريال)
+                          مبلغ المزايدة (الحد الأدنى: {(currentBidNum + 1).toLocaleString()} ريال)
                         </label>
                         <Input
                           type="number"
