@@ -32,6 +32,7 @@ export function EditCarPage() {
     const [inspectionReport, setInspectionReport] = useState<File | string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
     const [formData, setFormData] = useState({
         // Basic Info
@@ -116,9 +117,83 @@ export function EditCarPage() {
         fetchCarDetails();
     }, [id, navigate]);
 
+    // Validation functions
+    const validateYear = (year: string): string => {
+        if (!year) return "";
+        const yearNum = parseInt(year);
+        if (isNaN(yearNum)) return "السنة يجب أن تكون رقماً";
+        if (yearNum < 1886) return "السنة يجب أن تكون 1886 أو أحدث";
+        if (yearNum > new Date().getFullYear() + 1) return `السنة يجب أن لا تتجاوز ${new Date().getFullYear() + 1}`;
+        return "";
+    };
+
+    const validateModel = (model: string): string => {
+        if (!model) return "";
+        if (/^\d+$/.test(model)) return "اسم الموديل لا يمكن أن يكون أرقاماً فقط";
+        if (!/^[a-zA-Z0-9\s\-\u0600-\u06FF]+$/.test(model)) return "اسم الموديل يحتوي على أحرف غير صالحة";
+        return "";
+    };
+
+    const validateVIN = (vin: string): string => {
+        if (!vin) return "";
+        if (vin.length !== 17) return "رقم الهيكل يجب أن يكون 17 حرفاً بالضبط";
+        if (/[IOQ]/i.test(vin)) return "رقم الهيكل لا يمكن أن يحتوي على الأحرف I أو O أو Q";
+        if (!/^[A-HJ-NPR-Z0-9]{17}$/i.test(vin)) return "رقم الهيكل يحتوي على أحرف غير صالحة";
+        return "";
+    };
+
+    const validateMileage = (mileage: string): string => {
+        if (!mileage) return "";
+        const miles = parseInt(mileage);
+        if (isNaN(miles)) return "المسافة يجب أن تكون رقماً";
+        if (miles < 0) return "المسافة لا يمكن أن تكون سالبة";
+        if (miles > 999999) return "المسافة غير منطقية (الحد الأقصى 999,999 كم)";
+        return "";
+    };
+
+    const validateEngineSize = (size: string): string => {
+        if (!size) return "";
+        const engineSize = parseFloat(size);
+        if (isNaN(engineSize)) return "سعة المحرك يجب أن تكون رقماً";
+        if (engineSize < 0.6) return "سعة المحرك يجب أن تكون 0.6 لتر على الأقل";
+        if (engineSize > 8.0) return "سعة المحرك غير منطقية (الحد الأقصى 8.0 لتر)";
+        return "";
+    };
+
+    const validatePrice = (price: string): string => {
+        if (!price) return "";
+        const priceNum = parseFloat(price);
+        if (isNaN(priceNum)) return "السعر يجب أن يكون رقماً";
+        if (priceNum <= 0) return "السعر يجب أن يكون أكبر من صفر";
+        return "";
+    };
+
     const handleInputChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
+        
+        // Real-time validation
+        let error = "";
+        switch(field) {
+            case "year": error = validateYear(value); break;
+            case "model": error = validateModel(value); break;
+            case "vin": error = validateVIN(value); break;
+            case "mileage": error = validateMileage(value); break;
+            case "engineSize": error = validateEngineSize(value); break;
+            case "startBid": error = value ? validatePrice(value) : ""; break;
+            case "reservePrice": error = value ? validatePrice(value) : ""; break;
+        }
+        
+        setValidationErrors(prev => ({ ...prev, [field]: error }));
     };
+
+    // Valid colors and cylinders
+    const validColors = [
+        "أسود", "أبيض", "فضي", "رمادي", "أحمر", "أزرق", "أخضر", "بني",
+        "ذهبي", "برتقالي", "أصفر", "بيج", "أبيض لؤلؤي", "فضي معدني",
+        "أسود مطفي", "أزرق غامق", "أخضر غامق", "رمادي داكن", "أحمر داكن", "برونزي"
+    ];
+
+    const validCylinders = ["2", "3", "4", "5", "6", "8", "10", "12", "16"];
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
@@ -326,11 +401,15 @@ export function EditCarPage() {
                                     <Label htmlFor="model">الموديل *</Label>
                                     <Input
                                         id="model"
-                                        placeholder="مثال: كامري"
+                                        placeholder="مثال: كامري أو X5"
                                         value={formData.model}
                                         onChange={(e) => handleInputChange("model", e.target.value)}
                                         required
+                                        className={validationErrors.model ? "border-red-500" : ""}
                                     />
+                                    {validationErrors.model && (
+                                        <p className="text-sm text-red-500">{validationErrors.model}</p>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">
@@ -341,19 +420,28 @@ export function EditCarPage() {
                                         placeholder="2023"
                                         value={formData.year}
                                         onChange={(e) => handleInputChange("year", e.target.value)}
+                                        min={1886}
+                                        max={new Date().getFullYear() + 1}
                                         required
+                                        className={validationErrors.year ? "border-red-500" : ""}
                                     />
+                                    {validationErrors.year && (
+                                        <p className="text-sm text-red-500">{validationErrors.year}</p>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">
                                     <Label htmlFor="color">اللون *</Label>
-                                    <Input
-                                        id="color"
-                                        placeholder="مثال: أبيض"
-                                        value={formData.color}
-                                        onChange={(e) => handleInputChange("color", e.target.value)}
-                                        required
-                                    />
+                                    <Select value={formData.color} onValueChange={(value: string) => handleInputChange("color", value)}>
+                                        <SelectTrigger id="color">
+                                            <SelectValue placeholder="اختر اللون" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {validColors.map(color => (
+                                                <SelectItem key={color} value={color}>{color}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 <div className="space-y-2">
@@ -402,8 +490,14 @@ export function EditCarPage() {
                                         placeholder="15000"
                                         value={formData.mileage}
                                         onChange={(e) => handleInputChange("mileage", e.target.value)}
+                                        min={0}
+                                        max={999999}
                                         required
+                                        className={validationErrors.mileage ? "border-red-500" : ""}
                                     />
+                                    {validationErrors.mileage && (
+                                        <p className="text-sm text-red-500">{validationErrors.mileage}</p>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">
@@ -443,18 +537,27 @@ export function EditCarPage() {
                                         placeholder="2.5"
                                         value={formData.engineSize}
                                         onChange={(e) => handleInputChange("engineSize", e.target.value)}
+                                        min={0.6}
+                                        max={8.0}
+                                        className={validationErrors.engineSize ? "border-red-500" : ""}
                                     />
+                                    {validationErrors.engineSize && (
+                                        <p className="text-sm text-red-500">{validationErrors.engineSize}</p>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">
                                     <Label htmlFor="cylinders">عدد الأسطوانات</Label>
-                                    <Input
-                                        id="cylinders"
-                                        type="number"
-                                        placeholder="4"
-                                        value={formData.cylinders}
-                                        onChange={(e) => handleInputChange("cylinders", e.target.value)}
-                                    />
+                                    <Select value={formData.cylinders} onValueChange={(value: string) => handleInputChange("cylinders", value)}>
+                                        <SelectTrigger id="cylinders">
+                                            <SelectValue placeholder="اختر عدد الأسطوانات" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {validCylinders.map(num => (
+                                                <SelectItem key={num} value={num}>{num}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 <div className="space-y-2">
@@ -477,8 +580,14 @@ export function EditCarPage() {
                                         id="vin"
                                         placeholder="JTDKARFU5L3123456"
                                         value={formData.vin}
-                                        onChange={(e) => handleInputChange("vin", e.target.value)}
+                                        onChange={(e) => handleInputChange("vin", e.target.value.toUpperCase())}
+                                        maxLength={17}
+                                        className={validationErrors.vin ? "border-red-500" : ""}
                                     />
+                                    {validationErrors.vin && (
+                                        <p className="text-sm text-red-500">{validationErrors.vin}</p>
+                                    )}
+                                    <p className="text-xs text-gray-500">17 حرفاً (بدون I, O, Q)</p>
                                 </div>
 
                                 <div className="space-y-2">
@@ -563,19 +672,13 @@ export function EditCarPage() {
                                         placeholder="75000"
                                         value={formData.startBid}
                                         onChange={(e) => handleInputChange("startBid", e.target.value)}
+                                        min={1}
                                         required
+                                        className={validationErrors.startBid ? "border-red-500" : ""}
                                     />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="reservePrice">السعر الاحتياطي (ريال)</Label>
-                                    <Input
-                                        id="reservePrice"
-                                        type="number"
-                                        placeholder="90000"
-                                        value={formData.reservePrice}
-                                        onChange={(e) => handleInputChange("reservePrice", e.target.value)}
-                                    />
+                                    {validationErrors.startBid && (
+                                        <p className="text-sm text-red-500">{validationErrors.startBid}</p>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">

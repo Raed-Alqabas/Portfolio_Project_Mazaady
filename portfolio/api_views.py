@@ -102,13 +102,8 @@ def add_car_api(request):
     print("DEBUG: add_car_api call received. Files:", request.FILES)
     serializer = CarSerializer(data=request.data)
     if serializer.is_valid():
-        # Allow frontend to set status specifically to PENDING if start_date is in the future
-        # Otherwise, the model default 'IN_REVIEW' will be used
-        status = request.data.get('status')
-        if status == 'PENDING':
-            car = serializer.save(user=request.user, status='PENDING')
-        else:
-            car = serializer.save(user=request.user)
+        # All new cars default to IN_REVIEW status for admin approval
+        car = serializer.save(user=request.user)
         
         # Handle multiple images
         images = request.FILES.getlist('images')
@@ -197,11 +192,17 @@ def public_cars_api(request):
 def delete_car_api(request, pk):
     from .models import Car
     try:
-        car = Car.objects.get(pk=pk, user=request.user)
-        if car.status == 'ACTIVE':
-            return Response({'error': 'Cannot delete an active ad'}, status=400)
+        # Admins can delete any car, users can only delete their own
+        if request.user.is_staff:
+            car = Car.objects.get(pk=pk)
+        else:
+            car = Car.objects.get(pk=pk, user=request.user)
+            # Regular users cannot delete ACTIVE cars
+            if car.status == 'ACTIVE':
+                return Response({'error': 'Cannot delete an active ad'}, status=400)
+        
         car.delete()
-        print(f"DEBUG: Car {pk} deleted successfully")
+        print(f"DEBUG: Car {pk} deleted successfully by {request.user}")
         return Response(status=204)
     except Car.DoesNotExist:
         print(f"DEBUG: Car {pk} not found for user {request.user}")
@@ -1023,7 +1024,7 @@ def admin_dashboard_api(request):
         })
     
     # Latest auctions (cars)
-    recent_cars = Car.objects.select_related('user').order_by('-created_at')[:5]
+    recent_cars = Car.objects.select_related('user').prefetch_related('images').order_by('-created_at')[:10]
     recent_cars_data = []
     for car in recent_cars:
         time_diff = now - car.created_at
@@ -1035,11 +1036,27 @@ def admin_dashboard_api(request):
             mins = time_diff.seconds // 60
             time_str = 'الآن' if mins < 1 else f'{mins} دقيقة'
         
+        # Get car images
+        images = []
+        for img in car.images.all():
+            images.append(request.build_absolute_uri(img.image.url))
+        
         recent_cars_data.append({
+            'id': car.id,
             'title': car.title,
             'seller': car.user.username,
             'status': car.status,
-            'time': time_str
+            'time': time_str,
+            'images': images,
+            'brand': car.brand,
+            'model': car.model,
+            'year': car.year,
+            'mileage': car.mileage,
+            'color': car.color,
+            'location': car.location,
+            'description': car.description,
+            'start_bid': float(car.start_bid),
+            'auction_duration': car.auction_duration,
         })
     
     # NOTIFICATION STATS
@@ -1099,6 +1116,68 @@ def admin_dashboard_api(request):
         },
         'bidTrends': bid_trends
     })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def approve_car_api(request, pk):
+    """Admin approves a car - sets status to SOON or ACTIVE"""
+    from .models import Car
+    from django.utils import timezone
+    from datetime import datetime
+    
+    # Check if user is admin/staff
+    if not request.user.is_staff:
+        return Response({'error': 'Unauthorized'}, status=403)
+    
+    try:
+        car = Car.objects.get(pk=pk)
+        
+        # Determine status based on start_date
+        if car.start_date:
+            start_datetime = datetime.fromisoformat(str(car.start_date).replace('Z', '+00:00'))
+            if timezone.is_naive(start_datetime):
+                start_datetime = timezone.make_aware(start_datetime)
+            
+            if start_datetime > timezone.now():
+                car.status = 'SOON'
+            else:
+                car.status = 'ACTIVE'
+        else:
+            car.status = 'ACTIVE'
+        
+        car.save()
+        
+        return Response({
+            'message': 'Car approved successfully',
+            'status': car.status
+        })
+    except Car.DoesNotExist:
+        return Response({'error': 'Car not found'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reject_car_api(request, pk):
+    """Admin rejects a car - sets status to REJECTED"""
+    from .models import Car
+    
+    # Check if user is admin/staff  
+    if not request.user.is_staff:
+        return Response({'error': 'Unauthorized'}, status=403)
+    
+    try:
+        car = Car.objects.get(pk=pk)
+        car.status = 'REJECTED'
+        car.save()
+        
+        return Response({'message': 'Car rejected successfully'})
+    except Car.DoesNotExist:
+        return Response({'error': 'Car not found'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])

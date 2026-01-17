@@ -131,6 +131,7 @@ export function HomePage() {
       }
     }
   };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const params = new URLSearchParams();
