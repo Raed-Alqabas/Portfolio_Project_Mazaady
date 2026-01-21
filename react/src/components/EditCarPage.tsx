@@ -64,6 +64,7 @@ export function EditCarPage() {
         startBid: "",
         reservePrice: "",
         auctionDuration: "3",
+        startDate: "",
 
         // Additional Features
         features: [] as string[],
@@ -94,6 +95,7 @@ export function EditCarPage() {
                     startBid: data.start_bid?.toString() || "",
                     reservePrice: data.reserve_price?.toString() || "",
                     auctionDuration: data.auction_duration?.toString() || "3",
+                    startDate: data.start_date ? new Date(data.start_date).toISOString().slice(0, 16) : "",
                     features: Array.isArray(data.features) ? data.features : [],
                 });
 
@@ -631,6 +633,7 @@ export function EditCarPage() {
                                     </div>
                                     <Button
                                         type="button"
+                                        
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => setInspectionReport(null)}
@@ -688,12 +691,23 @@ export function EditCarPage() {
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="1">يوم واحد</SelectItem>
-                                            <SelectItem value="3">3 أيام</SelectItem>
-                                            <SelectItem value="5">5 أيام</SelectItem>
-                                            <SelectItem value="7">7 أيام</SelectItem>
+                                            <SelectItem value="1">دقيقة واحدة (تجريبي)</SelectItem>
+                                            <SelectItem value="3">3 دقائق (تجريبي)</SelectItem>
+                                            <SelectItem value="360">6 ساعات</SelectItem>
                                         </SelectContent>
                                     </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="startDate">تاريخ بدء المزاد *</Label>
+                                    <Input
+                                        id="startDate"
+                                        type="datetime-local"
+                                        value={formData.startDate || ''}
+                                        onChange={(e) => handleInputChange("startDate", e.target.value)}
+                                        min={new Date().toISOString().slice(0, 16)}
+                                        required
+                                    />
                                 </div>
                             </div>
                         </CardContent>

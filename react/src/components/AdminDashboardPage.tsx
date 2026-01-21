@@ -670,10 +670,62 @@ export function AdminDashboardPage() {
                                 <p className="text-slate-100">{car.year}</p>
                               </div>
                             )}
+                            {car.body_type && (
+                              <div className="bg-slate-700/50 p-3 rounded-lg">
+                                <p className="text-xs text-slate-400 mb-1">نوع الهيكل</p>
+                                <p className="text-slate-100">{car.body_type}</p>
+                              </div>
+                            )}
                             {car.mileage && (
                               <div className="bg-slate-700/50 p-3 rounded-lg">
                                 <p className="text-xs text-slate-400 mb-1">المسافة المقطوعة</p>
                                 <p className="text-slate-100">{car.mileage.toLocaleString()} كم</p>
+                              </div>
+                            )}
+                            {car.fuel && (
+                              <div className="bg-slate-700/50 p-3 rounded-lg">
+                                <p className="text-xs text-slate-400 mb-1">نوع الوقود</p>
+                                <p className="text-slate-100">{car.fuel}</p>
+                              </div>
+                            )}
+                            {car.transmission && (
+                              <div className="bg-slate-700/50 p-3 rounded-lg">
+                                <p className="text-xs text-slate-400 mb-1">ناقل الحركة</p>
+                                <p className="text-slate-100">{car.transmission}</p>
+                              </div>
+                            )}
+                            {car.engine_size && (
+                              <div className="bg-slate-700/50 p-3 rounded-lg">
+                                <p className="text-xs text-slate-400 mb-1">سعة المحرك</p>
+                                <p className="text-slate-100">{car.engine_size} لتر</p>
+                              </div>
+                            )}
+                            {car.cylinders && (
+                              <div className="bg-slate-700/50 p-3 rounded-lg">
+                                <p className="text-xs text-slate-400 mb-1">عدد الأسطوانات</p>
+                                <p className="text-slate-100">{car.cylinders}</p>
+                              </div>
+                            )}
+                            {car.condition && (
+                              <div className="bg-slate-700/50 p-3 rounded-lg">
+                                <p className="text-xs text-slate-400 mb-1">الحالة العامة</p>
+                                <p className="text-slate-100">{car.condition}</p>
+                              </div>
+                            )}
+                            {car.accidents && (
+                              <div className="bg-slate-700/50 p-3 rounded-lg">
+                                <p className="text-xs text-slate-400 mb-1">الحوادث</p>
+                                <p className="text-slate-100">
+                                  {car.accidents === 'no' ? 'لا يوجد' : 
+                                   car.accidents === 'minor' ? 'حوادث طفيفة' : 
+                                   car.accidents === 'major' ? 'حوادث كبيرة' : car.accidents}
+                                </p>
+                              </div>
+                            )}
+                            {car.vin && (
+                              <div className="bg-slate-700/50 p-3 rounded-lg">
+                                <p className="text-xs text-slate-400 mb-1">رقم الهيكل (VIN)</p>
+                                <p className="text-slate-100">{car.vin}</p>
                               </div>
                             )}
                             {car.color && (
@@ -709,7 +761,22 @@ export function AdminDashboardPage() {
                               {car.auction_duration && (
                                 <div className="bg-slate-700/50 p-3 rounded-lg">
                                   <p className="text-xs text-slate-400 mb-1">مدة المزاد</p>
-                                  <p className="text-slate-100">{car.auction_duration} أيام</p>
+                                  <p className="text-slate-100">
+                                    {car.auction_duration === 1 ? 'دقيقة واحدة (تجريبي)' : 
+                                     car.auction_duration === 3 ? '3 دقائق (تجريبي)' : 
+                                     car.auction_duration === 360 ? '6 ساعات' : 
+                                     `${car.auction_duration} دقيقة`}
+                                  </p>
+                                </div>
+                              )}
+                              {car.start_date && (
+                                <div className="bg-slate-700/50 p-3 rounded-lg">
+                                  <p className="text-xs text-slate-400 mb-1">تاريخ بدء المزاد</p>
+                                  <p className="text-slate-100">
+                                    {new Date(car.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                    {' | '}
+                                    {new Date(car.start_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                  </p>
                                 </div>
                               )}
                             </div>
@@ -723,6 +790,25 @@ export function AdminDashboardPage() {
                             <p className="text-slate-300 text-sm bg-slate-700/50 p-3 rounded-lg">
                               {car.description}
                             </p>
+                          </div>
+                        )}
+
+                        {/* Inspection Report */}
+                        {car.inspection_report && (
+                          <div>
+                            <h4 className="text-slate-200 font-medium mb-2 flex items-center gap-2">
+                              <FileText className="w-4 h-4 text-primary" />
+                              تقرير الفحص
+                            </h4>
+                            <a 
+                              href={car.inspection_report} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 bg-slate-700/50 hover:bg-slate-700 p-3 rounded-lg transition-colors text-slate-100"
+                            >
+                              <FileText className="w-5 h-5 text-green-400" />
+                              <span>عرض تقرير الفحص</span>
+                            </a>
                           </div>
                         )}
 
@@ -891,10 +977,62 @@ export function AdminDashboardPage() {
                                     <p className="text-slate-100">{car.year}</p>
                                   </div>
                                 )}
+                                {car.body_type && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">نوع الهيكل</p>
+                                    <p className="text-slate-100">{car.body_type}</p>
+                                  </div>
+                                )}
                                 {car.mileage && (
                                   <div className="bg-slate-700/50 p-3 rounded-lg">
                                     <p className="text-xs text-slate-400 mb-1">المسافة المقطوعة</p>
                                     <p className="text-slate-100">{car.mileage.toLocaleString()} كم</p>
+                                  </div>
+                                )}
+                                {car.fuel && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">نوع الوقود</p>
+                                    <p className="text-slate-100">{car.fuel}</p>
+                                  </div>
+                                )}
+                                {car.transmission && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">ناقل الحركة</p>
+                                    <p className="text-slate-100">{car.transmission}</p>
+                                  </div>
+                                )}
+                                {car.engine_size && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">سعة المحرك</p>
+                                    <p className="text-slate-100">{car.engine_size} لتر</p>
+                                  </div>
+                                )}
+                                {car.cylinders && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">عدد الأسطوانات</p>
+                                    <p className="text-slate-100">{car.cylinders}</p>
+                                  </div>
+                                )}
+                                {car.condition && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">الحالة العامة</p>
+                                    <p className="text-slate-100">{car.condition}</p>
+                                  </div>
+                                )}
+                                {car.accidents && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">الحوادث</p>
+                                    <p className="text-slate-100">
+                                      {car.accidents === 'no' ? 'لا يوجد' : 
+                                       car.accidents === 'minor' ? 'حوادث طفيفة' : 
+                                       car.accidents === 'major' ? 'حوادث كبيرة' : car.accidents}
+                                    </p>
+                                  </div>
+                                )}
+                                {car.vin && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">رقم الهيكل (VIN)</p>
+                                    <p className="text-slate-100">{car.vin}</p>
                                   </div>
                                 )}
                                 {car.color && (
@@ -929,7 +1067,22 @@ export function AdminDashboardPage() {
                                   {car.auction_duration && (
                                     <div className="bg-slate-700/50 p-3 rounded-lg">
                                       <p className="text-xs text-slate-400 mb-1">مدة المزاد</p>
-                                      <p className="text-slate-100">{car.auction_duration} أيام</p>
+                                      <p className="text-slate-100">
+                                        {car.auction_duration === 1 ? 'دقيقة واحدة (تجريبي)' : 
+                                         car.auction_duration === 3 ? '3 دقائق (تجريبي)' : 
+                                         car.auction_duration === 360 ? '6 ساعات' : 
+                                         `${car.auction_duration} دقيقة`}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {car.start_date && (
+                                    <div className="bg-slate-700/50 p-3 rounded-lg">
+                                      <p className="text-xs text-slate-400 mb-1">تاريخ بدء المزاد</p>
+                                      <p className="text-slate-100">
+                                        {new Date(car.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                        {' | '}
+                                        {new Date(car.start_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                      </p>
                                     </div>
                                   )}
                                 </div>
@@ -942,6 +1095,25 @@ export function AdminDashboardPage() {
                                 <p className="text-slate-300 text-sm bg-slate-700/50 p-3 rounded-lg">
                                   {car.description}
                                 </p>
+                              </div>
+                            )}
+
+                            {/* Inspection Report */}
+                            {car.inspection_report && (
+                              <div>
+                                <h4 className="text-slate-200 font-medium mb-2 flex items-center gap-2">
+                                  <FileText className="w-4 h-4 text-primary" />
+                                  تقرير الفحص
+                                </h4>
+                                <a 
+                                  href={car.inspection_report} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 bg-slate-700/50 hover:bg-slate-700 p-3 rounded-lg transition-colors text-slate-100"
+                                >
+                                  <FileText className="w-5 h-5 text-green-400" />
+                                  <span>عرض تقرير الفحص</span>
+                                </a>
                               </div>
                             )}
 

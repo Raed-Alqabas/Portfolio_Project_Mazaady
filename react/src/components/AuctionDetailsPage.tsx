@@ -106,9 +106,10 @@ export function AuctionDetailsPage() {
     // Validate bid amount first
     const currentBid = car?.current_bid || car?.start_bid || 0;
     const amount = parseFloat(bidAmount);
+    const minimumBid = currentBid + 500;
 
-    if (!amount || amount <= currentBid) {
-      toast.error(`يجب أن يكون المبلغ أكبر من المزايدة الحالية (${Number(currentBid).toLocaleString()} ريال)`);
+    if (!amount || amount < minimumBid) {
+      toast.error(`يجب أن يكون المبلغ على الأقل ${Number(minimumBid).toLocaleString()} ريال (${Number(currentBid).toLocaleString()} + 500)`);
       return;
     }
 
@@ -512,7 +513,7 @@ export function AuctionDetailsPage() {
 
                       <div>
                         <label className="text-sm text-gray-600 mb-2 block">
-                          مبلغ المزايدة (الحد الأدنى: {(currentBidNum + 1).toLocaleString()} ريال)
+                          مبلغ المزايدة (الحد الأدنى: {(currentBidNum + 500).toLocaleString()} ريال)
                         </label>
                         <Input
                           type="number"
