@@ -81,7 +81,7 @@ export function CarsPage() {
                     className="pr-9 bg-gray-50 border-gray-200"
                   />
                 </div>
-                <Button type="submit" size="sm">بحث</Button>
+                <Button type="submit" size="sm" className="bg-blue-600 hover:bg-blue-700">بحث</Button>
               </form>
 
               <Badge variant="secondary" className="mr-auto md:mr-0 bg-primary/10 text-primary border-primary/20 whitespace-nowrap">

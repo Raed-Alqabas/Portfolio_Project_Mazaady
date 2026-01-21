@@ -209,7 +209,7 @@ export function NotificationsPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-10 px-4 bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-200 font-medium"
+                              className="h-10 px-4 bg-blue-50 hover:bg-blue-700 hover:text-white text-blue-600 border-blue-200 font-medium"
                             >
                               عرض
                             </Button>
