@@ -159,9 +159,6 @@ export function AddCarPage() {
       case "startBid":
         error = validatePrice(value, "سعر البداية");
         break;
-      case "reservePrice":
-        error = validatePrice(value, "السعر الاحتياطي");
-        break;
     }
     
     setValidationErrors(prev => ({
@@ -231,10 +228,10 @@ export function AddCarPage() {
 
     // Check if time is between 8:00 AM and 2:00 PM (14:00)
     // 8:00 is allowed. 14:00 is allowed. 14:01 is not.
-    if (startHour < 8 || (startHour > 14 || (startHour === 14 && startMinutes > 0))) {
-      toast.error("يجب أن يكون وقت بدء المزاد بين الساعة 8 صباحاً و 2 ظهراً");
-      return;
-    }
+    // if (startHour < 8 || (startHour > 14 || (startHour === 14 && startMinutes > 0))) {
+    //   toast.error("يجب أن يكون وقت بدء المزاد بين الساعة 8 صباحاً و 2 ظهراً");
+    //   return;
+    // }
 
     setIsSubmitting(true);
     const data = new FormData();
@@ -683,6 +680,7 @@ export function AddCarPage() {
                   <p className="text-sm text-gray-500">PDF, DOC, DOCX (حد أقصى 10MB)</p>
                   <input
                     type="file"
+                    
                     accept=".pdf,.doc,.docx"
                     onChange={handleReportUpload}
                     className="hidden"
@@ -743,9 +741,9 @@ export function AddCarPage() {
                     min={new Date().toISOString().slice(0, 16)}
                     required
                   />
-                  <p className="text-xs text-gray-500">
+                  {/* <p className="text-xs text-gray-500">
                     يجب أن يكون وقت البدء بين 8:00 صباحاً و 2:00 ظهراً
-                  </p>
+                  </p> */}
                 </div>
               </div>
 

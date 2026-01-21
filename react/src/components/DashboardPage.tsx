@@ -23,7 +23,8 @@ export function DashboardPage() {
     activeBids: 0,
     wonAuctions: 0,
     favorites: 0,
-    totalSpending: 0
+    totalSpending: 0,
+    walletBalance: 0
   });
   const [recentBids, setRecentBids] = useState<any[]>([]);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
@@ -157,15 +158,32 @@ export function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-3">
+        {/* Header with Wallet */}
+        <div className="mb-8 flex items-start justify-between gap-4">
+          {/* Left Side - Dashboard Header */}
+          <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-lg">
               <BarChart3 className="w-6 h-6 text-white" />
             </div>
             <div>
               <h1 className="text-gray-900">لوحة التحكم</h1>
               <p className="text-gray-600 text-sm">نظرة عامة على نشاطك في المنصة</p>
+            </div>
+          </div>
+
+          {/* Right Side - Wallet Display */}
+          <div className="flex-shrink-0">
+            <div className="rounded-xl shadow-md bg-white border-0 min-w-[240px]">
+              {/* Content */}
+              <div className="px-6 py-3">
+                <p className="text-gray-600 text-xs font-medium mb-1">رصيد المحفظة</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-gray-900 text-2xl font-bold">
+                    {stats.walletBalance.toFixed(0)}
+                  </span>
+                  <span className="text-gray-700 text-sm font-semibold">ريال</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

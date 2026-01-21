@@ -263,8 +263,10 @@ def place_bid_api(request, pk):
     
     # Check if user has bidding access (paid entry fee)
     try:
+        from decimal import Decimal
         profile = request.user.profile
-        if not profile.bidding_access:
+        # User must have enough wallet balance (1500 SAR) to bid
+        if profile.wallet_balance < Decimal('1500.00'):
             return Response({
                 'error': 'Payment required',
                 'message': 'You must pay the 1500 SAR entry fee before bidding',
@@ -295,9 +297,28 @@ def place_bid_api(request, pk):
             amount = Decimal(str(amount))
         except:
             return Response({'error': 'Invalid amount'}, status=400)
+        
+        # Check if there are any existing bids
+        has_bids = car.bids.exists()
+        
+        if has_bids:
+            # If there are bids, minimum is current bid + 500
+            minimum_bid = car.current_bid + Decimal('500')
+        else:
+            # If no bids yet, minimum is the starting price
+            minimum_bid = car.start_bid
             
-        if amount <= car.current_bid:
-            return Response({'error': 'Bid must be higher than current price'}, status=400)
+        if amount < minimum_bid:
+            if has_bids:
+                return Response({
+                    'error': f'Bid must be at least {minimum_bid:,.0f} SAR ({car.current_bid:,.0f} + 500)',
+                    'minimum_required': float(minimum_bid)
+                }, status=400)
+            else:
+                return Response({
+                    'error': f'Bid must be at least {minimum_bid:,.0f} SAR (starting price)',
+                    'minimum_required': float(minimum_bid)
+                }, status=400)
         
         # Get previous highest bidder before creating new bid
         previous_highest_bid = car.bids.order_by('-amount').first()
@@ -621,33 +642,40 @@ def dashboard_api(request):
     won_count = 0
     total_spending = 0
     
-    # Add Bidding Access Fees (Membership)
-    membership_fees = Payment.objects.filter(
-        user=user,
-        status='CAPTURED',
-        purpose='BIDDING_ACCESS'
-    ).aggregate(total=Sum('amount'))['total']
+    # Track unique dates where user won an auction
+    dates_with_wins = set()
     
-    if membership_fees:
-        total_spending += float(membership_fees)
+    # Pre-calculate won auctions and dates
+    won_cars = [car for car in cars if car.status == 'CLOSED' and 
+                car.bids.order_by('-amount').first() and 
+                car.bids.order_by('-amount').first().user == user]
     
-    # Logic: It doesn't matter what car.status says, Time is the truth.
-    for car in cars:
-        auction_end = car.created_at + timedelta(days=car.auction_duration)
-        is_ended = now >= auction_end
-        
-        # Get highest bid for this car
+    for car in won_cars:
+        won_count += 1
         highest_bid = car.bids.order_by('-amount').first()
-        
-        if not is_ended:
-            # Auction is Active
-            if car.status != 'CLOSED': # Double check just in case manually closed
-                active_bids_count += 1
-        else:
-            # Auction Ended
-            if highest_bid and highest_bid.user == user:
-                won_count += 1
-                total_spending += float(highest_bid.amount)
+        total_spending += float(highest_bid.amount)
+        if car.closed_at:
+            dates_with_wins.add(car.closed_at.date())
+            
+    # Count active bids
+    for car in cars:
+        if not car.start_date:
+            continue
+        auction_end = car.start_date + timedelta(minutes=car.auction_duration)
+        if now < auction_end and car.status != 'CLOSED':
+            active_bids_count += 1
+            
+    # Apply wallet deduction (1500 per day of wins)
+    today = timezone.now().date()
+    profile = getattr(user, 'profile', None)
+    
+    for d in dates_with_wins:
+        if d < today:
+            # Past dates: always subtract if they won
+            total_spending -= 1500.0
+        elif profile and profile.wallet_balance == 0:
+            # Today: only subtract if the wallet has been reset (consumed)
+            total_spending -= 1500.0
     
     # Favorites
     
@@ -672,10 +700,10 @@ def dashboard_api(request):
             
         # Find car in our pre-fetched list
         car = next((c for c in cars if c.id == car_id), None)
-        if not car:
+        if not car or not car.start_date:
             continue
             
-        auction_end = car.created_at + timedelta(days=car.auction_duration)
+        auction_end = car.start_date + timedelta(minutes=car.auction_duration)
         is_ended = now >= auction_end
         
         highest_bid = car.bids.order_by('-amount').first()
@@ -768,10 +796,12 @@ def dashboard_api(request):
     # Active Ads
     active_ads_count = Car.objects.filter(user=user, status='ACTIVE').count()
     
-    # Rating
+    # Rating and Wallet
     rating = None
+    wallet_balance = 0
     if hasattr(user, 'profile'):
         rating = user.profile.rating
+        wallet_balance = float(user.profile.wallet_balance)
 
     return Response({
         'stats': {
@@ -779,6 +809,7 @@ def dashboard_api(request):
             'wonAuctions': won_count,
             'favorites': favorites_count,
             'totalSpending': total_spending,
+            'walletBalance': wallet_balance,
             'activeAds': active_ads_count,
             'rating': rating
         },
@@ -963,25 +994,37 @@ def admin_dashboard_api(request):
         })
     
     # REVENUE METRICS
-    # Total revenue from bidding access payments
+    # Total revenue from bidding access payments (1500 SAR each)
     bidding_revenue = Payment.objects.filter(
         purpose='BIDDING_ACCESS',
         status='CAPTURED'
     ).aggregate(total=Sum('amount'))['total']
     bidding_revenue = float(bidding_revenue) if bidding_revenue else 0
     
-    # Total revenue from all captured payments
-    total_revenue = Payment.objects.filter(
-        status='CAPTURED'
-    ).aggregate(total=Sum('amount'))['total']
-    total_revenue = float(total_revenue) if total_revenue else 0
+    # Platform revenue from won auctions (2.5% commission)
+    auction_commission = 0
+    won_cars = Car.objects.filter(status='CLOSED', winner__isnull=False)
+    for car in won_cars:
+        highest_bid = car.bids.order_by('-amount').first()
+        if highest_bid:
+            # Platform takes 2.5% commission
+            commission = float(highest_bid.amount) * 0.025
+            auction_commission += commission
     
-    # Revenue today
-    revenue_today = Payment.objects.filter(
-        status='CAPTURED',
-        created_at__gte=today_start
-    ).aggregate(total=Sum('amount'))['total']
-    revenue_today = float(revenue_today) if revenue_today else 0
+    # Total revenue = ONLY auction commissions (not including bidding access fees)
+    total_revenue = auction_commission
+    
+    # Revenue today (2.5% commission from auctions closed today)
+    revenue_today = 0
+    won_today = Car.objects.filter(
+        status='CLOSED', 
+        winner__isnull=False,
+        closed_at__gte=today_start
+    )
+    for car in won_today:
+        highest_bid = car.bids.order_by('-amount').first()
+        if highest_bid:
+            revenue_today += float(highest_bid.amount) * 0.025
     
     # RECENT ACTIVITY
     # Latest user registrations
@@ -1051,12 +1094,22 @@ def admin_dashboard_api(request):
             'brand': car.brand,
             'model': car.model,
             'year': car.year,
+            'body_type': car.body_type,
             'mileage': car.mileage,
+            'fuel': car.fuel,
+            'transmission': car.transmission,
+            'engine_size': float(car.engine_size) if car.engine_size else None,
+            'cylinders': car.cylinders,
+            'condition': car.condition,
+            'accidents': car.accidents,
+            'vin': car.vin,
             'color': car.color,
             'location': car.location,
             'description': car.description,
             'start_bid': float(car.start_bid),
             'auction_duration': car.auction_duration,
+            'start_date': car.start_date.isoformat() if car.start_date else None,
+            'inspection_report': request.build_absolute_uri(car.inspection_report.url) if car.inspection_report else None,
         })
     
     # NOTIFICATION STATS
@@ -1134,17 +1187,24 @@ def approve_car_api(request, pk):
         car = Car.objects.get(pk=pk)
         
         # Determine status based on start_date
+        now = timezone.now()
+        
         if car.start_date:
             start_datetime = datetime.fromisoformat(str(car.start_date).replace('Z', '+00:00'))
             if timezone.is_naive(start_datetime):
                 start_datetime = timezone.make_aware(start_datetime)
             
-            if start_datetime > timezone.now():
+            if start_datetime > now:
+                # Start date is in the future - set to SOON
                 car.status = 'SOON'
             else:
+                # Start date has passed - start immediately and update start_date to now
                 car.status = 'ACTIVE'
+                car.start_date = now
         else:
+            # No start date specified - start immediately
             car.status = 'ACTIVE'
+            car.start_date = now
         
         car.save()
         

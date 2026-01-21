@@ -133,8 +133,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'mazaady_db',
-        'USER': 'rayan',
-        'PASSWORD': '1230',
+        'USER': 'admin',
+        'PASSWORD': 'admin@AdMiN123',
         'HOST': 'localhost',
         'PORT': '3306',
     }
@@ -166,7 +166,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Riyadh'
 
 USE_I18N = True
 

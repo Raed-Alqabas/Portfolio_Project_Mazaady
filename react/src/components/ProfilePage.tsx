@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, Calendar, Edit, Save, Lock } from "lucide-react";
+import { User, Mail, Phone, Calendar, Edit, Save, Lock, Wallet } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -39,6 +39,7 @@ export function ProfilePage() {
     activeBids: 0,
     wonAuctions: 0,
     activeAds: 0,
+    walletBalance: 0,
     rating: null as number | null
   });
 
@@ -87,6 +88,7 @@ export function ProfilePage() {
         activeBids: statsRes.data.stats.activeBids,
         wonAuctions: statsRes.data.stats.wonAuctions,
         activeAds: statsRes.data.stats.activeAds || 0,
+        walletBalance: statsRes.data.stats.walletBalance || 0,
         rating: statsRes.data.stats.rating
       });
 
@@ -145,13 +147,6 @@ export function ProfilePage() {
     }
   };
 
-  const statCards = [
-    { label: "المزايدات النشطة", value: stats.activeBids },
-    { label: "المزايدات المكتملة", value: stats.wonAuctions },
-    { label: "الإعلانات النشطة", value: stats.activeAds },
-    { label: "التقييم", value: stats.rating ? `${stats.rating}/5` : "لا يوجد تقييم" },
-  ];
-
   if (loading) return <div className="min-h-screen flex items-center justify-center">جاري التحميل...</div>;
 
   return (
@@ -192,18 +187,6 @@ export function ProfilePage() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Stats */}
-        <div className="grid md:grid-cols-4 gap-4 mb-6">
-          {statCards.map((stat, index) => (
-            <Card key={index} className="border-0 shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="p-6 text-center">
-                <p className="text-3xl font-bold text-blue-600 mb-2">{stat.value}</p>
-                <p className="text-sm text-gray-600 font-medium">{stat.label}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
 
         {/* Profile Details */}
         <Card className="border-0 shadow-sm">
