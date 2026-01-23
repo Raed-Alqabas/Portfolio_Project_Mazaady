@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router";
+import { Link, useOutletContext } from "react-router";
 import {
   Gavel,
   Heart,
@@ -16,6 +16,7 @@ import api from "../api/axios";
 import { calculateTimeRemaining, calculateTimeUntilStart } from "../utils/timeUtils";
 
 export function HeroSection() {
+  const { user }: any = useOutletContext();
   const [featuredCars, setFeaturedCars] = useState<any[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,7 +51,7 @@ export function HeroSection() {
 
     window.addEventListener('favoritesChanged', handleFavoritesChange);
     return () => window.removeEventListener('favoritesChanged', handleFavoritesChange);
-  }, []);
+  }, [user]);
 
   // Update time every second for live countdown
   useEffect(() => {
@@ -119,6 +120,13 @@ export function HeroSection() {
   };
 
   const fetchUserFavorites = async () => {
+    // Only fetch from API if user is logged in
+    if (!user) {
+      const stored = localStorage.getItem('favorites');
+      if (stored) setFavorites(new Set<number>(JSON.parse(stored)));
+      return;
+    }
+
     try {
       const response = await api.get("/favorites/");
       const favoriteIds = new Set<number>(response.data.map((fav: any) => fav.car.id));
@@ -269,7 +277,7 @@ export function HeroSection() {
                     <Badge className="bg-white/90 text-primary border-0">
                       {currentAuction.bids_count || 0} مزايدة
                     </Badge>
-                    <button 
+                    <button
                       onClick={() => toggleFavorite(currentAuction.id)}
                       className="p-3 bg-white/90 rounded-full hover:scale-110 transition-transform"
                     >

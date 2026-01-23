@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { Gavel, Car, Home, LogIn, User, LogOut, ClipboardList, Megaphone, Heart, Search, ShoppingCart, Bell, LayoutDashboard } from "lucide-react";
+import { Gavel, Car, Home, LogIn, User, LogOut, ClipboardList, Megaphone, Heart, Search, ShoppingCart, Bell, LayoutDashboard, Menu, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { AuthDialog } from "./AuthDialog";
 import { useState, useEffect, useRef } from "react";
@@ -21,7 +21,10 @@ import {
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { toast } from "sonner";
 import { Toaster } from "./ui/sonner";
-import logoImage from "../assets/main-logo.png";
+import logoImage from "../assets/main-logo-2.svg";
+import logoImageWhite from "../assets/main-logo-2-w.PNG";
+import { LoadingScreen } from "./LoadingScreen";
+
 import axios from "../api/axios";
 import { ScrollToTop } from "./ScrollToTop";
 
@@ -37,8 +40,33 @@ export function RootLayout() {
   const [bidsCount, setBidsCount] = useState(0);
   const [notificationCount, setNotificationCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pageLoading, setPageLoading] = useState(false);
+
+  // Navigation items
+  const navItems = [
+    { path: "/", label: "الرئيسية", icon: Home },
+    { path: "/auctions", label: "المزايدات", icon: Gavel },
+    { path: "/cars", label: "السيارات", icon: Car },
+  ];
+
+  const userMenuItems = [
+    { path: "/favorites", label: "المفضلة", icon: Heart, count: favoritesCount, isAlert: false },
+    { path: "/my-bids", label: "مزايداتي", icon: Gavel, count: bidsCount, isAlert: false },
+    { path: "/notifications", label: "الإشعارات", icon: Bell, count: notificationCount, isAlert: true },
+  ];
+
+  // Track window width for responsive menu behavior
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
 
   useEffect(() => {
+    // Only fetch counts if user is logged in
+    if (!user) {
+      setFavoritesCount(0);
+      setBidsCount(0);
+      setNotificationCount(0);
+      return;
+    }
+
     fetchNotificationCounts();
     // Refresh counts every 30 seconds
     const interval = setInterval(fetchNotificationCounts, 30000);
@@ -48,13 +76,28 @@ export function RootLayout() {
       fetchNotificationCounts();
     };
 
-    window.addEventListener('favoritesChanged', handleFavoritesChange);
+    window.addEventListener('favorites-changed', handleFavoritesChange);
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('favoritesChanged', handleFavoritesChange);
+      window.removeEventListener('favorites-changed', handleFavoritesChange);
     };
   }, [user]);
+
+  // Handle window resize for responsive menu
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      setIsDesktop(width >= 1024);
+      // Close mobile menu if switching to desktop
+      if (width >= 1024 && mobileMenuOpen) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [mobileMenuOpen]);
 
   // Restore session on mount
   useEffect(() => {
@@ -139,6 +182,12 @@ export function RootLayout() {
     }
   };
 
+  // Navigation helper function
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    setMobileMenuOpen(false); // Close mobile menu after navigation
+  };
+
   // Auto-logout logic
   const lastActivityRef = useRef(Date.now());
   const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutes
@@ -194,132 +243,173 @@ export function RootLayout() {
     }
   }, []);
 
+  // Handle route change loading
+  useEffect(() => {
+    // Only show loader if we're actually changing paths (not just params/hash if desired)
+    // But usually any location change is enough
+    setPageLoading(true);
+    const timer = setTimeout(() => {
+      setPageLoading(false);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
+
   return (
     <div className="min-h-screen bg-background" dir="rtl">
+      {pageLoading && <LoadingScreen />}
       <ScrollToTop />
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4">
-          {/* Top Bar - Single Row */}
-          <div className="flex items-center justify-between gap-6 h-20">
+          {/* Top Bar */}
+          <div className="flex items-center justify-between gap-4 h-16 lg:h-20">
+            {/* Mobile Menu Button - Using new Burger Icon */}
+            {!isDesktop && (
+              <div
+                className={`burger-icon ${mobileMenuOpen ? 'open' : ''}`}
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label="Toggle menu"
+              >
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            )}
+
             {/* Logo */}
-            <Link to="/" className="flex-shrink-0 group">
+            <div className={`flex-shrink-0 cursor-pointer group z-50 transition-colors duration-300 ${mobileMenuOpen ? 'text-white' : 'text-gray-900'}`} onClick={() => handleNavigation('/')}>
               <img
-                src={logoImage}
+                src={mobileMenuOpen ? logoImageWhite : logoImage}
                 alt="مزادي"
-                className="h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                className="h-15 lg:h-17 w-auto object-contain transition-all duration-300 group-hover:scale-105"
               />
-            </Link>
+            </div>
 
             {/* Search Bar - Center */}
-            <div className="flex-1 max-w-2xl">
-              <form onSubmit={handleSearch} className="relative">
-                <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <div className="hidden flex-1 w-96 mx-4">
+              <div className="relative w-96">
+                <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="ابحث عن سيارة، موديل، أو ماركة..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-12 pr-12 pl-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch(e)}
+                  className="w-full h-11 lg:h-12 pr-12 pl-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
                 />
-              </form>
+              </div>
             </div>
-
-            {/* Right Icons & Auth */}
-            <div className="flex items-center gap-3 flex-shrink-0">
-              {/* Favorites Icon */}
+            {/* Desktop Navigation Bar - ONLY VISIBLE ON DESKTOP (lg and above) */}
+            {isDesktop && (
+              <div className="border-t border-gray-100 bg-gray-50/50 rounded-md">
+                <div className="container mx-auto px-4">
+                  <nav className="flex items-center justify-center gap-1 h-14">
+                    {navItems.map((item) => {
+                      const Icon = item.icon;
+                      const active = isActive(item.path);
+                      return (
+                        <Button
+                          key={item.path}
+                          variant={active ? "default" : "ghost"}
+                          onClick={() => handleNavigation(item.path)}
+                          className={
+                            active
+                              ? "gap-2 bg-blue-600 text-white hover:bg-blue-700 rounded-xl"
+                              : "gap-2 text-gray-700 hover:bg-white hover:text-blue-600 rounded-xl"
+                          }
+                        >
+                          <Icon className="w-4 h-4" />
+                          {item.label}
+                        </Button>
+                      );
+                    })}
+                  </nav>
+                </div>
+              </div>
+            )}
+            {/* Right Section */}
+            <div className="flex items-center gap-2 lg:gap-3 flex-shrink-0 my-1">
+              {/* Desktop Action Icons - Only on Desktop (hidden on <lg, visible on lg:1024px+) */}
               {user && (
-                <Link to="/favorites">
-                  <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group">
-                    <Heart className="w-6 h-6 text-gray-600 group-hover:text-accent transition-colors" />
-                    {favoritesCount > 0 && (
-                      <span className="absolute -top-1 -left-1 w-5 h-5 bg-accent text-white text-xs rounded-full flex items-center justify-center">
-                        {favoritesCount}
-                      </span>
-                    )}
-                  </button>
-                </Link>
-              )}
+                <div className="hidden lg:block">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleNavigation('/favorites')}
+                      className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group"
+                    >
+                      <Heart className="w-6 h-6 text-gray-600 group-hover:text-red-500 transition-colors" />
+                      {favoritesCount > 0 && (
+                        <span className="absolute -top-1 -left-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                          {favoritesCount}
+                        </span>
+                      )}
+                    </button>
 
-              {/* My Bids Icon */}
-              {user && (
-                <Link to="/my-bids">
-                  <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group">
-                    <Gavel className="w-6 h-6 text-gray-600 group-hover:text-accent transition-colors" />
-                    {bidsCount > 0 && (
-                      <span className="absolute -top-1 -left-1 w-5 h-5 bg-accent text-white text-xs rounded-full flex items-center justify-center">
-                        {bidsCount}
-                      </span>
-                    )}
-                  </button>
-                </Link>
-              )}
+                    <button
+                      onClick={() => handleNavigation('/my-bids')}
+                      className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group"
+                    >
+                      <Gavel className="w-6 h-6 text-gray-600 group-hover:text-blue-600 transition-colors" />
+                      {bidsCount > 0 && (
+                        <span className="absolute -top-1 -left-1 w-5 h-5 bg-blue-600 text-white text-xs rounded-full flex items-center justify-center">
+                          {bidsCount}
+                        </span>
+                      )}
+                    </button>
 
-              {/* Notifications Icon */}
-              {user && (
-                <Link to="/notifications">
-                  <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group">
-                    <Bell className="w-6 h-6 text-gray-600 group-hover:text-accent transition-colors" />
-                    {(() => {
-                      console.log('Current notificationCount:', notificationCount);
-                      return notificationCount > 0 && (
+                    <button
+                      onClick={() => handleNavigation('/notifications')}
+                      className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors group"
+                    >
+                      <Bell className="w-6 h-6 text-gray-600 group-hover:text-orange-500 transition-colors" />
+                      {notificationCount > 0 && (
                         <span className="absolute -top-1 -left-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse shadow-lg">
                           {notificationCount > 99 ? '99+' : notificationCount}
                         </span>
-                      );
-                    })()}
-                  </button>
-                </Link>
+                      )}
+                    </button>
+
+                    <div className="h-8 w-px bg-gray-200 mx-1"></div>
+                  </div>
+                </div>
               )}
 
-              {/* Divider */}
-              <div className="h-8 w-px bg-gray-200"></div>
-
-              {/* User Section */}
+              {/* User Menu */}
               {user ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="gap-2 h-12 px-4 hover:bg-gray-100 rounded-xl">
+                    <Button variant="ghost" className="gap-2 h-10 lg:h-12 px-2 lg:px-4 hover:bg-gray-100 rounded-xl">
                       <Avatar className="w-8 h-8 border-2 border-gray-200">
-                        <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white">
+                        <AvatarFallback className="bg-gradient-to-br from-blue-600 to-blue-700 text-white text-sm">
                           {user.name.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm text-gray-700">{user.name}</span>
+                      <span className="hidden lg:inline text-sm text-gray-700 font-medium">{user.name}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel>حسابي</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to="/dashboard" className="flex items-center">
-                        <LayoutDashboard className="ml-2 w-4 h-4" />
-                        لوحة التحكم
-                      </Link>
+                    <DropdownMenuItem onClick={() => handleNavigation('/dashboard')}>
+                      <LayoutDashboard className="ml-2 w-4 h-4" />
+                      لوحة التحكم
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/profile" className="flex items-center">
-                        <User className="ml-2 w-4 h-4" />
-                        الملف الشخصي
-                      </Link>
+                    <DropdownMenuItem onClick={() => handleNavigation('/profile')}>
+                      <User className="ml-2 w-4 h-4" />
+                      الملف الشخصي
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/my-bids" className="flex items-center">
-                        <Gavel className="ml-2 w-4 h-4" />
-                        مزايداتي
-                      </Link>
+                    <DropdownMenuItem onClick={() => handleNavigation('/my-bids')}>
+                      <Gavel className="ml-2 w-4 h-4" />
+                      مزايداتي
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/my-ads" className="flex items-center">
-                        <Megaphone className="ml-2 w-4 h-4" />
-                        إعلاناتي
-                      </Link>
+                    <DropdownMenuItem onClick={() => handleNavigation('/my-ads')}>
+                      <Megaphone className="ml-2 w-4 h-4" />
+                      إعلاناتي
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/favorites" className="flex items-center">
-                        <Heart className="ml-2 w-4 h-4" />
-                        المفضلة
-                      </Link>
+                    <DropdownMenuItem onClick={() => handleNavigation('/favorites')}>
+                      <Heart className="ml-2 w-4 h-4" />
+                      المفضلة
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="text-red-600">
@@ -329,123 +419,68 @@ export function RootLayout() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Button
-                  onClick={() => setAuthOpen(true)}
-                  className="gap-2 h-12 px-6 bg-primary hover:bg-primary/90 text-white rounded-xl shadow-sm"
-                >
+                <Button onClick={() => setAuthOpen(true)} className="gap-2 h-10 lg:h-12 px-4 lg:px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm text-sm">
                   <LogIn className="w-4 h-4" />
-                  تسجيل الدخول
+                  <span className="hidden md:block">تسجيل الدخول</span>
                 </Button>
               )}
             </div>
           </div>
+
         </div>
 
-        {/* Navigation Bar - Second Row */}
-        <div className="border-t border-gray-100 bg-gray-50/50">
-          <div className="container mx-auto px-4">
-            {/* Mobile Menu Trigger & Search (Visible on Mobile) */}
-            <div className="lg:hidden">
-              <div className="flex items-center justify-between py-3">
-                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                  <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <ClipboardList className="w-6 h-6 text-gray-700" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                    <SheetHeader>
-                      <SheetTitle className="text-right">القائمة الرئيسية</SheetTitle>
-                    </SheetHeader>
-                    <div className="flex flex-col gap-4 mt-8">
-                      <Link to="/" onClick={() => setMobileMenuOpen(false)}>
-                        <Button variant="ghost" className="w-full justify-start gap-2 text-lg">
-                          <Home className="w-5 h-5" />
-                          الرئيسية
-                        </Button>
-                      </Link>
-                      <Link to="/auctions" onClick={() => setMobileMenuOpen(false)}>
-                        <Button variant="ghost" className="w-full justify-start gap-2 text-lg">
-                          <Gavel className="w-5 h-5" />
-                          المزادات
-                        </Button>
-                      </Link>
-                      <Link to="/cars" onClick={() => setMobileMenuOpen(false)}>
-                        <Button variant="ghost" className="w-full justify-start gap-2 text-lg">
-                          <Car className="w-5 h-5" />
-                          السيارات
-                        </Button>
-                      </Link>
-                      {user && (
-                        <>
-                          <div className="h-px bg-gray-200 my-2" />
-                          <Link to="/favorites" onClick={() => setMobileMenuOpen(false)}>
-                            <Button variant="ghost" className="w-full justify-start gap-2 text-lg">
-                              <Heart className="w-5 h-5" />
-                              المفضلة
-                            </Button>
-                          </Link>
-                          <Link to="/my-bids" onClick={() => setMobileMenuOpen(false)}>
-                            <Button variant="ghost" className="w-full justify-start gap-2 text-lg">
-                              <Gavel className="w-5 h-5" />
-                              مزايداتي
-                            </Button>
-                          </Link>
-                          <Link to="/notifications" onClick={() => setMobileMenuOpen(false)}>
-                            <Button variant="ghost" className="w-full justify-start gap-2 text-lg">
-                              <Bell className="w-5 h-5" />
-                              الإشعارات
-                            </Button>
-                          </Link>
-                        </>
-                      )}
-                    </div>
-                  </SheetContent>
-                </Sheet>
-              </div>
-            </div>
+        {/* Mobile Mega Menu Overlay */}
+        <div className={`mobile-menu-overlay ${mobileMenuOpen ? 'open' : 'closed'}`}>
+          <div className="container mx-auto px-6 py-24 h-full flex flex-col justify-center">
+            <nav className="flex flex-col gap-8 text-center">
+              {/* Main Navigation Items */}
+              {navItems.map((item) => {
+                const active = isActive(item.path);
+                return (
+                  <button
+                    key={item.path}
+                    onClick={() => handleNavigation(item.path)}
+                    className={`text-3xl font-bold transition-all duration-300 hover:text-blue-500 hover:scale-105 ${active ? 'text-blue-500' : 'text-white'
+                      }`}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
 
-            {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center justify-center gap-1 h-14">
-              <Link to="/">
-                <Button
-                  variant={isActive("/") && !isActive("/my-") && !isActive("/profile") && !isActive("/favorites") ? "default" : "ghost"}
-                  className={
-                    isActive("/") && !isActive("/my-") && !isActive("/profile") && !isActive("/favorites")
-                      ? "gap-2 bg-primary text-white hover:bg-primary/90 rounded-xl"
-                      : "gap-2 text-gray-700 hover:bg-white hover:text-primary rounded-xl"
-                  }
-                >
-                  <Home className="w-4 h-4" />
-                  الرئيسية
-                </Button>
-              </Link>
-              <Link to="/auctions">
-                <Button
-                  variant={isActive("/auctions") ? "default" : "ghost"}
-                  className={
-                    isActive("/auctions")
-                      ? "gap-2 bg-primary text-white hover:bg-primary/90 rounded-xl"
-                      : "gap-2 text-gray-700 hover:bg-white hover:text-primary rounded-xl"
-                  }
-                >
-                  <Gavel className="w-4 h-4" />
-                  المزايدات
-                </Button>
-              </Link>
-              <Link to="/cars">
-                <Button
-                  variant={isActive("/cars") ? "default" : "ghost"}
-                  className={
-                    isActive("/cars")
-                      ? "gap-2 bg-primary text-white hover:bg-primary/90 rounded-xl"
-                      : "gap-2 text-gray-700 hover:bg-white hover:text-primary rounded-xl"
-                  }
-                >
-                  <Car className="w-4 h-4" />
-                  السيارات
-                </Button>
-              </Link>
+              {/* User Menu Items - Only if logged in */}
+              {user && (
+                <>
+                  <div className="w-16 h-1 bg-gray-700 mx-auto rounded-full my-4"></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {userMenuItems.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.path}
+                          onClick={() => handleNavigation(item.path)}
+                          className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-all group"
+                        >
+                          <Icon className="w-8 h-8 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                          <span className="text-gray-300 text-sm font-medium group-hover:text-white">{item.label}</span>
+                          {item.count > 0 && (
+                            <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
+                              {item.count}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={handleLogout}
+                      className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-red-500/10 hover:bg-red-500/20 transition-all group col-span-2"
+                    >
+                      <LogOut className="w-8 h-8 text-red-500" />
+                      <span className="text-red-500 text-sm font-medium">تسجيل الخروج</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </nav>
           </div>
         </div>
@@ -469,9 +504,9 @@ export function RootLayout() {
               <div className="flex items-center gap-2 mb-4">
                 <Link to="/" className="flex-shrink-0 group">
                   <img
-                    src={logoImage}
+                    src={logoImageWhite}
                     alt="مزادي"
-                    className="h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                    className="h-15 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
                   />
                 </Link>
               </div>

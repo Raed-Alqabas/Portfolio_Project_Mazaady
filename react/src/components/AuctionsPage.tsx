@@ -88,7 +88,7 @@ export function AuctionsPage() {
               <Gavel className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-gray-900">المزادات النشطة</h1>
+              <h1 className="text-gray-900">المزادات</h1>
               <p className="text-gray-600 text-sm">تصفح جميع المزادات المتاحة وشارك في المزايدة</p>
             </div>
           </div>
@@ -109,7 +109,7 @@ export function AuctionsPage() {
                     className="pr-9 bg-gray-50 border-gray-200"
                   />
                 </div>
-                <Button type="submit" size="sm">بحث</Button>
+                <Button type="submit" size="sm" className="bg-blue-600 hover:bg-blue-700">بحث</Button>
               </form>
 
               <div className="h-8 w-px bg-gray-200 hidden md:block mx-2" />

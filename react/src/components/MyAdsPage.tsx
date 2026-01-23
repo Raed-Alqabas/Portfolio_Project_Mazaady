@@ -134,7 +134,13 @@ export function MyAdsPage() {
                       <p className="text-xs text-gray-500 mb-3">{ad.brand} {ad.model} - {ad.year}</p>
 
                       <div className="flex items-center justify-between text-xs text-gray-500 mb-4 bg-gray-50 p-2 rounded">
-                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {ad.auction_duration} أيام</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> 
+                          {ad.auction_duration === 1 ? 'دقيقة واحدة (تجريبي)' : 
+                           ad.auction_duration === 3 ? '3 دقائق (تجريبي)' : 
+                           ad.auction_duration === 360 ? '6 ساعات' : 
+                           `${ad.auction_duration} دقيقة`}
+                        </span>
                         <span className="flex items-center gap-1"><Plus className="w-3 h-3" /> {ad.images?.length || 0} صور</span>
                       </div>
 
@@ -146,7 +152,8 @@ export function MyAdsPage() {
                             عرض
                           </Button>
                         </Link>
-                        {ad.status !== "ACTIVE" && (
+                        {/* Show edit only if: 1) Not ACTIVE, AND 2) If CLOSED, only if no bids */}
+                        {ad.status !== "ACTIVE" && !(ad.status === "CLOSED" && ad.bids_count > 0) && (
                           <>
                             <Button
                               variant="outline"

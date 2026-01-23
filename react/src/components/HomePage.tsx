@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useOutletContext } from "react-router";
 import { Gavel, Car, TrendingUp, Clock, Shield, Users, Search, MapPin, Phone, Mail, ArrowRight, Star, Award, CheckCircle, Heart } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
@@ -17,6 +17,7 @@ import { calculateTimeRemaining, calculateTimeUntilStart } from "../utils/timeUt
 
 export function HomePage() {
   const navigate = useNavigate();
+  const { user }: any = useOutletContext();
   const [activeCars, setActiveCars] = useState<any[]>([]);
   const [soonCars, setSoonCars] = useState<any[]>([]);
   const [closedCars, setClosedCars] = useState<any[]>([]);
@@ -48,7 +49,7 @@ export function HomePage() {
 
     window.addEventListener('favoritesChanged', handleFavoritesChange);
     return () => window.removeEventListener('favoritesChanged', handleFavoritesChange);
-  }, []);
+  }, [user]);
 
   // Update time every second for live countdown
   useEffect(() => {
@@ -77,18 +78,27 @@ export function HomePage() {
   };
 
   const fetchUserFavorites = async () => {
-    try {
-      const response = await api.get("/favorites/");
-      const favoriteIds = new Set<number>(response.data.map((fav: any) => fav.car.id));
-      setFavorites(favoriteIds);
-      // Also save to localStorage
-      localStorage.setItem('favorites', JSON.stringify(Array.from(favoriteIds)));
-    } catch (error) {
-      // User might not be logged in, try localStorage
-      const stored = localStorage.getItem('favorites');
-      if (stored) {
-        setFavorites(new Set<number>(JSON.parse(stored)));
+    if (user) {
+      try {
+        const response = await api.get("/favorites/");
+        const favoriteIds = new Set<number>(response.data.map((fav: any) => fav.car.id));
+        setFavorites(favoriteIds);
+        // Also save to localStorage
+        localStorage.setItem('favorites', JSON.stringify(Array.from(favoriteIds)));
+      } catch (error) {
+        // Fallback to local storage if API fails
+        loadFavoritesFromStorage();
       }
+    } else {
+      // Not logged in, load from local storage
+      loadFavoritesFromStorage();
+    }
+  };
+
+  const loadFavoritesFromStorage = () => {
+    const stored = localStorage.getItem('favorites');
+    if (stored) {
+      setFavorites(new Set<number>(JSON.parse(stored)));
     }
   };
 
@@ -268,7 +278,7 @@ export function HomePage() {
                   </Select>
                 </div>
                 <div className="md:col-span-1">
-                  <Button type="submit" className="w-full">
+                  <Button type="submit" className="w-full bg-blue-600">
                     <Search className="w-4 h-4" />
                   </Button>
                 </div>
@@ -278,7 +288,7 @@ export function HomePage() {
 
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="mb-2">المزادات المميزة</h2>
+              <h2 className="mb-2 text-2xl font-bold">المزادات المميزة</h2>
               <p className="text-gray-600">أحدث المزادات النشطة الآن</p>
             </div>
             <Link to="/auctions">
@@ -378,145 +388,149 @@ export function HomePage() {
               })
             )}
           </div>
-
-          {/* Coming Soon Auctions Section */}
-          {soonCars.length > 0 && (
-            <div className="mt-20">
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h2 className="mb-2">تبدأ قريباً</h2>
-                  <p className="text-gray-600">مزادات سوف تبدأ قريباً</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                {soonCars.map((car) => {
-                  const mainImage = car.images?.[0]?.image;
-
-                  return (
-                    <Link to={`/auction/${car.id}`} key={car.id} className="block group">
-                      <div className="overflow-hidden rounded-lg border shadow-sm hover:shadow-md transition-all duration-300">
-                        {/* Image Container */}
-                        <div className="relative aspect-video overflow-hidden rounded-t-lg bg-gray-200">
-                          {mainImage ? (
-                            <img
-                              src={mainImage}
-                              alt={car.title}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                              <Car className="w-10 h-10 text-gray-300" />
-                            </div>
-                          )}
-
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
-
-                          <Badge className="absolute top-3 left-3 bg-blue-500 text-white border-0 px-3 py-1 text-xs backdrop-blur-sm z-20">
-                            قريباً
-                          </Badge>
-
-                          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white z-10">
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              <span className="text-xs">{calculateTimeUntilStart(car.start_date)}</span>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-[10px] opacity-80">سعر البداية</div>
-                              <div className="text-sm font-bold">{parseInt(car.start_bid).toLocaleString()} ريال</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Content */}
-                        <div className="p-4 bg-white">
-                          <h3 className="text-gray-800 font-semibold mb-1 line-clamp-1">{car.title}</h3>
-                          <div className="flex items-center justify-between text-[11px] text-gray-500">
-                            <span>{car.brand} {car.model}</span>
-                            <span>{car.year}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Closed Auctions Section */}
-          {closedCars.length > 0 && (
-            <div className="mt-20">
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h2 className="mb-2">المزادات المنتهية</h2>
-                  <p className="text-gray-600">المزادات التي انتهى وقتها مؤخراً</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 opacity-80">
-                {closedCars.map((car) => {
-                  const mainImage = car.images?.[0]?.image;
-
-                  return (
-                    <Link to={`/auction/${car.id}`} key={car.id} className="block group grayscale hover:grayscale-0 transition-all duration-300">
-                      <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm bg-gray-50">
-                        {/* Image Container */}
-                        <div className="relative aspect-video overflow-hidden rounded-t-lg bg-gray-200">
-                          {mainImage ? (
-                            <img
-                              src={mainImage}
-                              alt={car.title}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                              <Car className="w-10 h-10 text-gray-300" />
-                            </div>
-                          )}
-
-                          {/* Dark overlay for closed look */}
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                            <Badge variant="secondary" className="bg-white/90 text-gray-900 scale-125">
-                              منتهي
-                            </Badge>
-                          </div>
-
-                          {/* Info Overlay */}
-                          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white z-10">
-                            <div className="flex items-center gap-1 bg-black/50 px-2 py-0.5 rounded text-xs">
-                              <TrendingUp className="w-3 h-3" />
-                              <span>{car.brand}</span>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-xs opacity-90 font-bold">السعر النهائي: {Number(car.current_bid).toLocaleString()} ريال</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Content */}
-                        <div className="p-4">
-                          <h3 className="text-gray-700 font-semibold mb-1 line-clamp-1">{car.title}</h3>
-                          <div className="flex items-center justify-between text-xs text-gray-400">
-                            <span>{car.region || car.location}</span>
-                            <span>{car.year}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       </section>
 
+      {/* Coming Soon Auctions Section */}
+      {soonCars.length > 0 && (
+        <section className="py-20 bg-white">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="mb-2 text-2xl font-bold">تبدأ قريباً</h2>
+                <p className="text-gray-600">مزادات سوف تبدأ قريباً</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              {soonCars.map((car) => {
+                const mainImage = car.images?.[0]?.image;
+
+                return (
+                  <Link to={`/auction/${car.id}`} key={car.id} className="block group">
+                    <div className="overflow-hidden rounded-lg border shadow-sm hover:shadow-md transition-all duration-300">
+                      {/* Image Container */}
+                      <div className="relative aspect-video overflow-hidden rounded-t-lg bg-gray-200">
+                        {mainImage ? (
+                          <img
+                            src={mainImage}
+                            alt={car.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                            <Car className="w-10 h-10 text-gray-300" />
+                          </div>
+                        )}
+
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+
+                        <Badge className="absolute top-3 left-3 bg-blue-500 text-white border-0 px-3 py-1 text-xs backdrop-blur-sm z-20">
+                          قريباً
+                        </Badge>
+
+                        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white z-10">
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            <span className="text-xs">{calculateTimeUntilStart(car.start_date)}</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-[10px] opacity-80">سعر البداية</div>
+                            <div className="text-sm font-bold">{parseInt(car.start_bid).toLocaleString()} ريال</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-4 bg-white">
+                        <h3 className="text-gray-800 font-semibold mb-1 line-clamp-1">{car.title}</h3>
+                        <div className="flex items-center justify-between text-[11px] text-gray-500">
+                          <span>{car.brand} {car.model}</span>
+                          <span>{car.year}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Closed Auctions Section */}
+      {closedCars.length > 0 && (
+        <section className="py-20 bg-gray-50">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="mb-2 text-2xl font-bold">المزادات المنتهية</h2>
+                <p className="text-gray-600">المزادات التي انتهى وقتها مؤخراً</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 opacity-80">
+              {closedCars.map((car) => {
+                const mainImage = car.images?.[0]?.image;
+
+                return (
+                  <Link to={`/auction/${car.id}`} key={car.id} className="block group grayscale hover:grayscale-0 transition-all duration-300">
+                    <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm bg-gray-50">
+                      {/* Image Container */}
+                      <div className="relative aspect-video overflow-hidden rounded-t-lg bg-gray-200">
+                        {mainImage ? (
+                          <img
+                            src={mainImage}
+                            alt={car.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                            <Car className="w-10 h-10 text-gray-300" />
+                          </div>
+                        )}
+
+                        {/* Dark overlay for closed look */}
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <Badge variant="secondary" className="bg-white/90 text-gray-900 scale-125">
+                            منتهي
+                          </Badge>
+                        </div>
+
+                        {/* Info Overlay */}
+                        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white z-10">
+                          <div className="flex items-center gap-1 bg-black/50 px-2 py-0.5 rounded text-xs">
+                            <TrendingUp className="w-3 h-3" />
+                            <span>{car.brand}</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs opacity-90 font-bold">السعر النهائي: {Number(car.current_bid).toLocaleString()} ريال</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-4">
+                        <h3 className="text-gray-700 font-semibold mb-1 line-clamp-1">{car.title}</h3>
+                        <div className="flex items-center justify-between text-xs text-gray-400">
+                          <span>{car.region || car.location}</span>
+                          <span>{car.year}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Features */}
-      <section className="py-16 bg-gray-100">
+      <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="mb-4">لماذا تختار منصتنا؟</h2>
+            <h2 className="mb-4 text-2xl font-bold">لماذا تختار منصتنا؟</h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
               نوفر لك تجربة مزادات آمنة وسهلة مع أفضل الخدمات
             </p>
@@ -524,7 +538,7 @@ export function HomePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, index) => (
-              <Card key={index} className="text-center pb-4 transition-all duration-500 ease-in-out hover:scale-115 hover:shadow-xl hover:bg-blue-50/30 cursor-default">
+              <Card key={index} className="text-center pb-4 transition-all duration-500 ease-in-out hover:scale-105 hover:shadow-xl hover:bg-blue-50/30 cursor-default">
                 <CardHeader>
                   <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
                     <feature.icon className="w-6 h-6 text-blue-600" />
@@ -539,11 +553,11 @@ export function HomePage() {
       </section>
 
       {/* Contact Us Section */}
-      <section className="py-16 bg-gray-100">
+      <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
-              <h2 className="mb-4">تواصل معنا</h2>
+              <h2 className="mb-4 text-2xl font-bold">تواصل معنا</h2>
               <p className="text-gray-600">
                 نحن هنا لمساعدتك في أي استفسار أو طلب
               </p>
@@ -596,7 +610,7 @@ export function HomePage() {
                       className="min-h-[150px]"
                     />
                   </div>
-                  <Button type="submit" className="w-full bg-blue-900 hover:bg-blue-800 h-12 text-lg" disabled={isSubmitting}>
+                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-lg" disabled={isSubmitting}>
                     {isSubmitting ? "جاري الإرسال..." : "إرسال"}
                   </Button>
                 </form>

@@ -136,22 +136,14 @@ WSGI_APPLICATION = 'mazaady_portfolio.wsgi.application'
 # Using SQLite for development (change to MySQL when server is running)
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'mazaady_db',
+        'USER': 'admin',
+        'PASSWORD': 'admin@AdMiN123',
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
-
-# MySQL Configuration (uncomment when MySQL server is running)
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'mazaady_db',
-#         'USER': 'rayan',
-#         'PASSWORD': '1230',
-#         'HOST': 'localhost',
-#         'PORT': '3306',
-#     }
-# }
 
 
 
@@ -179,7 +171,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Riyadh'
 
 USE_I18N = True
 

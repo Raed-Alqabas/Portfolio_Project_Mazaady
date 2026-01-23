@@ -12,7 +12,7 @@ from django.template import Context
 from django.http import JsonResponse
 import os  
 import requests
-from .models import Mazaady, Payment, AuctionEntry
+from .models import Mazaady, Payment
 from django.utils import timezone
 from decimal import Decimal, ROUND_HALF_UP
 from rest_framework.decorators import api_view, permission_classes
@@ -124,9 +124,11 @@ def tap_return(request):
         if payment.purpose == "BIDDING_ACCESS":
             try:
                 from .models import Notification
+                from decimal import Decimal
                 profile = payment.user.profile
                 profile.bidding_access = True
-                profile.save(update_fields=["bidding_access"])
+                profile.wallet_balance = Decimal('1500.00')  # Add to wallet
+                profile.save(update_fields=["bidding_access", "wallet_balance"])
                 
                 # Create payment confirmation notification
                 Notification.objects.create(
@@ -145,16 +147,7 @@ def tap_return(request):
             except Exception as e:
                 return HttpResponse(f"⚠️ Payment captured but failed to grant access: {e}")
         
-        # Handle auction-specific entry fees
-        entry, _ = AuctionEntry.objects.get_or_create(
-            auction=payment.auction,
-            user=payment.user,
-        )
-        entry.is_paid = True
-        entry.paid_at = timezone.now()
-        entry.save(update_fields=["is_paid", "paid_at"])
-
-        return HttpResponse("✅ Entry deposit paid. You can now enter this auction.")
+        return HttpResponse("✅ Payment successful.")
     else:
         payment.status = "FAILED"
         payment.save(update_fields=["status"])
