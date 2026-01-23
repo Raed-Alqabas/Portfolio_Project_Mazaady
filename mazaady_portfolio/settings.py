@@ -16,6 +16,10 @@ from dotenv import load_dotenv
 load_dotenv()
 from datetime import timedelta
 
+# Use PyMySQL for MySQL support
+import pymysql
+pymysql.install_as_MySQLdb()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -129,16 +133,25 @@ WSGI_APPLICATION = 'mazaady_portfolio.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# Using SQLite for development (change to MySQL when server is running)
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'mazaady_db',
-        'USER': 'rayan',
-        'PASSWORD': '1230',
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+# MySQL Configuration (uncomment when MySQL server is running)
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'mazaady_db',
+#         'USER': 'rayan',
+#         'PASSWORD': '1230',
+#         'HOST': 'localhost',
+#         'PORT': '3306',
+#     }
+# }
 
 
 
