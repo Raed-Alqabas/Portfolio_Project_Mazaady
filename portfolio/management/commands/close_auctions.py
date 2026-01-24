@@ -41,13 +41,17 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'Successfully closed {closed_count} auctions'))
 
     def close_auction(self, car):
+        from django.utils import timezone
+        
         car.status = 'CLOSED'
+        # car.closed_at has been removed
         
         # Find highest bid
         highest_bid = car.bids.order_by('-amount').first()
         
         if highest_bid:
             car.winner = highest_bid.user
+            # Note: Wallet deduction happens at end of day, not per auction
             self.send_winner_email(car, highest_bid.user, highest_bid.amount)
             self.stdout.write(f"Car {car.id}: Winner is {highest_bid.user.username} with {highest_bid.amount}")
         else:

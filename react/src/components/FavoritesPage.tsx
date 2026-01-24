@@ -371,7 +371,7 @@ export function FavoritesPage() {
                 </p>
                 <div className="flex gap-3 justify-center">
                   <Link to="/auctions">
-                    <Button className="gap-2">
+                    <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
                       <TrendingUp className="w-4 h-4" />
                       تصفح المزادات
                     </Button>

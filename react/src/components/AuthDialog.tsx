@@ -279,7 +279,7 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
               <Input
                 id="email"
                 type="text"
-                placeholder={mode === "login" ? "ادخل اسم المستخدم او الايميل" : "example@email.com"}
+                placeholder={mode === "login" ? "ادخل اسم المستخدم او البريد الإلكتروني" : "example@email.com"}
                 required
                 value={formData.email}
                 onChange={(e) => handleChange("email", e.target.value)}
@@ -340,7 +340,7 @@ export function AuthDialog({ open, onOpenChange, onLogin }: AuthDialogProps) {
             </div>
           )}
 
-          <Button type="submit" className="w-full gap-2" disabled={isLoading}>
+          <Button type="submit" className="w-full gap-2 bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
             {isLoading ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>

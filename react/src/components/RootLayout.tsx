@@ -286,20 +286,7 @@ export function RootLayout() {
               />
             </div>
 
-            {/* Search Bar - Center */}
-            <div className="hidden flex-1 w-96 mx-4">
-              <div className="relative w-96">
-                <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="ابحث عن سيارة، موديل، أو ماركة..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch(e)}
-                  className="w-full h-11 lg:h-12 pr-12 pl-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                />
-              </div>
-            </div>
+
             {/* Desktop Navigation Bar - ONLY VISIBLE ON DESKTOP (lg and above) */}
             {isDesktop && (
               <div className="border-t border-gray-100 bg-gray-50/50 rounded-md">
@@ -332,7 +319,7 @@ export function RootLayout() {
             <div className="flex items-center gap-2 lg:gap-3 flex-shrink-0 my-1">
               {/* Desktop Action Icons - Only on Desktop (hidden on <lg, visible on lg:1024px+) */}
               {user && (
-                <div className="hidden lg:block">
+                <div className="hidden md:block">
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleNavigation('/favorites')}
@@ -496,7 +483,7 @@ export function RootLayout() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white mt-20">
+      <footer className="bg-black text-white mt-20">
         <div className="container mx-auto px-4 py-12">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             {/* About */}
