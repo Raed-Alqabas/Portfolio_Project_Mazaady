@@ -179,7 +179,7 @@ export function DashboardPage() {
         <div className="mb-8 flex items-start justify-between gap-4">
           {/* Left Side - Dashboard Header */}
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gray-500 rounded-xl flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-lg">
               <BarChart3 className="w-6 h-6 text-white" />
             </div>
             <div>

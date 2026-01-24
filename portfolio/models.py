@@ -29,7 +29,6 @@ class Mazaady(models.Model):
 
 class Payment(models.Model):
     PURPOSE_CHOICES = [
-        ("ENTRY_FEE", "Entry Fee"),
         ("FINAL_CHARGE", "Final Charge"),
         ("BIDDING_ACCESS", "Bidding Access"),  # One-time global payment
     ]
@@ -58,14 +57,6 @@ class Payment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
-class AuctionEntry(models.Model):
-    auction = models.ForeignKey("Mazaady", on_delete=models.CASCADE)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    is_paid = models.BooleanField(default=False)
-    paid_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        unique_together = ("auction", "user")
 
 
 class Profile(models.Model):
@@ -73,6 +64,7 @@ class Profile(models.Model):
     phone_country_code = models.CharField(max_length=5, default="966")
     phone_number = models.CharField(max_length=20)
     bidding_access = models.BooleanField(default=False)
+    wallet_balance = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     masked_id = models.CharField(max_length=20, blank=True, null=True)
     wallet_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
@@ -109,7 +101,7 @@ class Car(models.Model):
     
     # Auction Details
     start_bid = models.DecimalField(max_digits=12, decimal_places=2)
-    reserve_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    reserve_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True) # not in use anymore
     auction_duration = models.IntegerField(default=3)
     
     # Files
@@ -132,6 +124,7 @@ class Car(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='IN_REVIEW')
     
     start_date = models.DateTimeField(null=True, blank=True)
+    closed_at = models.DateTimeField(null=True, blank=True)  # Track when auction closed
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

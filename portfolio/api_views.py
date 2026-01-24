@@ -654,10 +654,8 @@ def dashboard_api(request):
         won_count += 1
         highest_bid = car.bids.order_by('-amount').first()
         total_spending += float(highest_bid.amount)
-        # Calculate closed date from start_date + auction_duration
-        if car.start_date:
-            closed_date = (car.start_date + timedelta(minutes=car.auction_duration)).date()
-            dates_with_wins.add(closed_date)
+        if car.closed_at:
+            dates_with_wins.add(car.closed_at.date())
             
     # Count active bids
     for car in cars:
@@ -1017,17 +1015,16 @@ def admin_dashboard_api(request):
     total_revenue = auction_commission
     
     # Revenue today (2.5% commission from auctions closed today)
-    # Revenue today (2.5% commission from auctions closed today)
     revenue_today = 0
-    for car in won_cars:
-        if not car.start_date:
-            continue
-            
-        closing_time = car.start_date + timedelta(minutes=car.auction_duration)
-        if closing_time >= today_start:
-            highest_bid = car.bids.order_by('-amount').first()
-            if highest_bid:
-                revenue_today += float(highest_bid.amount) * 0.025
+    won_today = Car.objects.filter(
+        status='CLOSED', 
+        winner__isnull=False,
+        closed_at__gte=today_start
+    )
+    for car in won_today:
+        highest_bid = car.bids.order_by('-amount').first()
+        if highest_bid:
+            revenue_today += float(highest_bid.amount) * 0.025
     
     # RECENT ACTIVITY
     # Latest user registrations

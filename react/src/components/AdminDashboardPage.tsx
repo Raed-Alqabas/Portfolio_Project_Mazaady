@@ -715,9 +715,9 @@ export function AdminDashboardPage() {
                               <div className="bg-slate-700/50 p-3 rounded-lg">
                                 <p className="text-xs text-slate-400 mb-1">الحوادث</p>
                                 <p className="text-slate-100">
-                                  {car.accidents === 'no' ? 'لا يوجد' :
-                                    car.accidents === 'minor' ? 'حوادث طفيفة' :
-                                      car.accidents === 'major' ? 'حوادث كبيرة' : car.accidents}
+                                  {car.accidents === 'no' ? 'لا يوجد' : 
+                                   car.accidents === 'minor' ? 'حوادث طفيفة' : 
+                                   car.accidents === 'major' ? 'حوادث كبيرة' : car.accidents}
                                 </p>
                               </div>
                             )}
@@ -761,10 +761,10 @@ export function AdminDashboardPage() {
                                 <div className="bg-slate-700/50 p-3 rounded-lg">
                                   <p className="text-xs text-slate-400 mb-1">مدة المزاد</p>
                                   <p className="text-slate-100">
-                                    {car.auction_duration === 1 ? 'دقيقة واحدة (تجريبي)' :
-                                      car.auction_duration === 3 ? '3 دقائق (تجريبي)' :
-                                        car.auction_duration === 360 ? '6 ساعات' :
-                                          `${car.auction_duration} دقيقة`}
+                                    {car.auction_duration === 1 ? 'دقيقة واحدة (تجريبي)' : 
+                                     car.auction_duration === 3 ? '3 دقائق (تجريبي)' : 
+                                     car.auction_duration === 360 ? '6 ساعات' : 
+                                     `${car.auction_duration} دقيقة`}
                                   </p>
                                 </div>
                               )}
@@ -795,15 +795,15 @@ export function AdminDashboardPage() {
                         {/* Inspection Report */}
                         {car.inspection_report && (
                           <div>
-                            <h4 className="text-gray-900 font-medium mb-2 flex items-center gap-2">
+                            <h4 className="text-slate-200 font-medium mb-2 flex items-center gap-2">
                               <FileText className="w-4 h-4 text-primary" />
                               تقرير الفحص
                             </h4>
-                            <a
-                              href={car.inspection_report}
-                              target="_blank"
+                            <a 
+                              href={car.inspection_report} 
+                              target="_blank" 
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 bg-gray-50 hover:bg-gray-100 p-3 rounded-lg transition-colors text-gray-900"
+                              className="inline-flex items-center gap-2 bg-slate-700/50 hover:bg-slate-700 p-3 rounded-lg transition-colors text-slate-100"
                             >
                               <FileText className="w-5 h-5 text-green-400" />
                               <span>عرض تقرير الفحص</span>
@@ -957,88 +957,88 @@ export function AdminDashboardPage() {
                                 تفاصيل السيارة
                               </h4>
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            {car.brand && (
-                              <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                <p className="text-xs text-gray-500 mb-1">الماركة</p>
-                                <p className="text-gray-900">{car.brand}</p>
-                              </div>
-                            )}
-                            {car.model && (
-                              <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                <p className="text-xs text-gray-500 mb-1">الموديل</p>
-                                <p className="text-gray-900">{car.model}</p>
-                              </div>
-                            )}
-                            {car.year && (
-                              <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                <p className="text-xs text-gray-500 mb-1">السنة</p>
-                                <p className="text-gray-900">{car.year}</p>
-                              </div>
-                            )}
-                            {car.body_type && (
-                              <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                <p className="text-xs text-gray-500 mb-1">نوع الهيكل</p>
-                                <p className="text-gray-900">{car.body_type}</p>
-                              </div>
-                            )}
-                            {car.mileage && (
-                              <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                <p className="text-xs text-gray-500 mb-1">المسافة المقطوعة</p>
-                                <p className="text-gray-900">{car.mileage.toLocaleString()} كم</p>
-                              </div>
-                            )}
-                            {car.fuel && (
-                              <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                <p className="text-xs text-gray-500 mb-1">نوع الوقود</p>
-                                <p className="text-gray-900">{car.fuel}</p>
-                              </div>
-                            )}
-                            {car.transmission && (
-                              <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                <p className="text-xs text-gray-500 mb-1">ناقل الحركة</p>
-                                <p className="text-gray-900">{car.transmission}</p>
-                              </div>
-                            )}
-                            {car.engine_size && (
-                              <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                <p className="text-xs text-gray-500 mb-1">سعة المحرك</p>
-                                <p className="text-gray-900">{car.engine_size} لتر</p>
-                              </div>
-                            )}
-                            {car.cylinders && (
-                              <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                <p className="text-xs text-gray-500 mb-1">عدد الأسطوانات</p>
-                                <p className="text-gray-900">{car.cylinders}</p>
-                              </div>
-                            )}
-                            {car.condition && (
-                              <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                <p className="text-xs text-gray-500 mb-1">الحالة العامة</p>
-                                <p className="text-gray-900">{car.condition}</p>
-                              </div>
-                            )}
-                            {car.accidents && (
-                              <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                <p className="text-xs text-gray-500 mb-1">الحوادث</p>
-                                <p className="text-gray-900">
-                                  {car.accidents === 'no' ? 'لا يوجد' : 
-                                   car.accidents === 'minor' ? 'حوادث طفيفة' : 
-                                   car.accidents === 'major' ? 'حوادث كبيرة' : car.accidents}
-                                </p>
-                              </div>
-                            )}
-                            {car.vin && (
-                              <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                <p className="text-xs text-gray-500 mb-1">رقم الهيكل (VIN)</p>
-                                <p className="text-gray-900">{car.vin}</p>
-                              </div>
-                            )}
-                            {car.color && (
-                              <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                <p className="text-xs text-gray-500 mb-1">اللون</p>
-                                <p className="text-gray-900">{car.color}</p>
-                              </div>
-                            )}
+                                {car.brand && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">الماركة</p>
+                                    <p className="text-slate-100">{car.brand}</p>
+                                  </div>
+                                )}
+                                {car.model && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">الموديل</p>
+                                    <p className="text-slate-100">{car.model}</p>
+                                  </div>
+                                )}
+                                {car.year && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">السنة</p>
+                                    <p className="text-slate-100">{car.year}</p>
+                                  </div>
+                                )}
+                                {car.body_type && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">نوع الهيكل</p>
+                                    <p className="text-slate-100">{car.body_type}</p>
+                                  </div>
+                                )}
+                                {car.mileage && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">المسافة المقطوعة</p>
+                                    <p className="text-slate-100">{car.mileage.toLocaleString()} كم</p>
+                                  </div>
+                                )}
+                                {car.fuel && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">نوع الوقود</p>
+                                    <p className="text-slate-100">{car.fuel}</p>
+                                  </div>
+                                )}
+                                {car.transmission && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">ناقل الحركة</p>
+                                    <p className="text-slate-100">{car.transmission}</p>
+                                  </div>
+                                )}
+                                {car.engine_size && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">سعة المحرك</p>
+                                    <p className="text-slate-100">{car.engine_size} لتر</p>
+                                  </div>
+                                )}
+                                {car.cylinders && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">عدد الأسطوانات</p>
+                                    <p className="text-slate-100">{car.cylinders}</p>
+                                  </div>
+                                )}
+                                {car.condition && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">الحالة العامة</p>
+                                    <p className="text-slate-100">{car.condition}</p>
+                                  </div>
+                                )}
+                                {car.accidents && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">الحوادث</p>
+                                    <p className="text-slate-100">
+                                      {car.accidents === 'no' ? 'لا يوجد' : 
+                                       car.accidents === 'minor' ? 'حوادث طفيفة' : 
+                                       car.accidents === 'major' ? 'حوادث كبيرة' : car.accidents}
+                                    </p>
+                                  </div>
+                                )}
+                                {car.vin && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">رقم الهيكل (VIN)</p>
+                                    <p className="text-slate-100">{car.vin}</p>
+                                  </div>
+                                )}
+                                {car.color && (
+                                  <div className="bg-slate-700/50 p-3 rounded-lg">
+                                    <p className="text-xs text-slate-400 mb-1">اللون</p>
+                                    <p className="text-slate-100">{car.color}</p>
+                                  </div>
+                                )}
                                 {car.location && (
                                   <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
                                     <p className="text-xs text-gray-500 mb-1">الموقع</p>
@@ -1063,20 +1063,20 @@ export function AdminDashboardPage() {
                                     <p className="text-gray-900 font-semibold">{car.start_bid?.toLocaleString()} ر.س</p>
                                   </div>
                                   {car.auction_duration && (
-                                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                      <p className="text-xs text-gray-500 mb-1">مدة المزاد</p>
-                                      <p className="text-gray-900">
-                                        {car.auction_duration === 1 ? 'دقيقة واحدة (تجريبي)' :
-                                          car.auction_duration === 3 ? '3 دقائق (تجريبي)' :
-                                            car.auction_duration === 360 ? '6 ساعات' :
-                                              `${car.auction_duration} دقيقة`}
+                                    <div className="bg-slate-700/50 p-3 rounded-lg">
+                                      <p className="text-xs text-slate-400 mb-1">مدة المزاد</p>
+                                      <p className="text-slate-100">
+                                        {car.auction_duration === 1 ? 'دقيقة واحدة (تجريبي)' : 
+                                         car.auction_duration === 3 ? '3 دقائق (تجريبي)' : 
+                                         car.auction_duration === 360 ? '6 ساعات' : 
+                                         `${car.auction_duration} دقيقة`}
                                       </p>
                                     </div>
                                   )}
                                   {car.start_date && (
-                                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                      <p className="text-xs text-gray-500 mb-1">تاريخ بدء المزاد</p>
-                                      <p className="text-gray-900">
+                                    <div className="bg-slate-700/50 p-3 rounded-lg">
+                                      <p className="text-xs text-slate-400 mb-1">تاريخ بدء المزاد</p>
+                                      <p className="text-slate-100">
                                         {new Date(car.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                                         {' | '}
                                         {new Date(car.start_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
@@ -1103,11 +1103,11 @@ export function AdminDashboardPage() {
                                   <FileText className="w-4 h-4 text-primary" />
                                   تقرير الفحص
                                 </h4>
-                                <a
-                                  href={car.inspection_report}
-                                  target="_blank"
+                                <a 
+                                  href={car.inspection_report} 
+                                  target="_blank" 
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-2 bg-gray-50 hover:bg-gray-100 p-3 rounded-lg transition-colors text-gray-900"
+                                  className="inline-flex items-center gap-2 bg-slate-700/50 hover:bg-slate-700 p-3 rounded-lg transition-colors text-slate-100"
                                 >
                                   <FileText className="w-5 h-5 text-green-400" />
                                   <span>عرض تقرير الفحص</span>

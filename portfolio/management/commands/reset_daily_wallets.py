@@ -17,21 +17,14 @@ class Command(BaseCommand):
         self.stdout.write(f'Processing wallets for {today_start.date()}')
         
         # Find all cars that closed today
-        # Find all cars that closed today
-        potential_closed = Car.objects.filter(
+        cars_closed_today = Car.objects.filter(
             status='CLOSED',
+            closed_at__gte=today_start,
+            closed_at__lt=today_end,
             winner__isnull=False
         )
         
-        cars_closed_today = []
-        for car in potential_closed:
-            if not car.start_date:
-                continue
-            closing_time = car.start_date + timedelta(minutes=car.auction_duration)
-            if today_start <= closing_time < today_end:
-                cars_closed_today.append(car)
-        
-        self.stdout.write(f'Found {len(cars_closed_today)} closed auctions today')
+        self.stdout.write(f'Found {cars_closed_today.count()} closed auctions today')
         
         # Get unique winners
         winners_today = set()
