@@ -1,32 +1,43 @@
-arrow==1.4.0
-asgiref==3.11.0
-binaryornot==0.4.4
-certifi==2025.11.12
-chardet==5.2.0
-charset-normalizer==3.4.4
-click==8.3.1
-cookiecutter==2.6.0
-crispy-bootstrap5==2025.6
-crispy-tailwind==1.0.3
+# Core Django
 Django==6.0
-django-browser-reload==1.21.0
-django-crispy-forms==2.5
-django-tailwind @ git+https://github.com/timonweb/django-tailwind.git@dfb5a0004cc06ba9106fa0e15f479dabaa8a0f29
-honcho==2.0.0
-idna==3.11
-Jinja2==3.1.6
-markdown-it-py==4.0.0
-MarkupSafe==3.0.3
-mdurl==0.1.2
-Pygments==2.19.2
-pytailwindcss==0.3.0
-python-dateutil==2.9.0.post0
-python-slugify==8.0.4
-PyYAML==6.0.3
-requests==2.32.5
-rich==14.2.0
-six==1.17.0
+djangorestframework==3.14.0
+djangorestframework-simplejwt==5.3.2
+
+# Database
+mysqlclient==2.2.5
 sqlparse==0.5.4
-text-unidecode==1.3
-tzdata==2025.3
+asgiref==3.11.0
+
+# Django Extensions
+django-cors-headers==4.3.1
+django-crispy-forms==2.5
+crispy-tailwind==1.0.3
+crispy-bootstrap5==2025.6
+django-tailwind @ git+https://github.com/timonweb/django-tailwind.git@dfb5a0004cc06ba9106fa0e15f479dabaa8a0f29
+django-browser-reload==1.21.0
+
+# Tailwind CSS
+pytailwindcss==0.3.0
+
+# HTTP & Networking
+requests==2.32.5
 urllib3==2.6.2
+certifi==2025.11.12
+charset-normalizer==3.4.4
+idna==3.11
+
+# Date & Time
+python-dateutil==2.9.0.post0
+tzdata==2025.3
+
+# Text Processing
+python-slugify==8.0.4
+text-unidecode==1.3
+
+# Other Utilities
+six==1.17.0
+
+# Development (Optional - can remove for production)
+honcho==2.0.0
+
+

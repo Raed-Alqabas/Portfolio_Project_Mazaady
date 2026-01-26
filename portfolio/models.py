@@ -124,7 +124,6 @@ class Car(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='IN_REVIEW')
     
     start_date = models.DateTimeField(null=True, blank=True)
-    closed_at = models.DateTimeField(null=True, blank=True)  # Track when auction closed
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -150,7 +149,17 @@ class Car(models.Model):
         return timezone.now() >= expiration_time
 
     def check_status(self):
-        """Updates status to CLOSED if auction has expired"""
+        """Updates status based on time: SOON->ACTIVE when start_date arrives, ACTIVE->CLOSED when expired"""
+        from django.utils import timezone
+        now = timezone.now()
+        
+        # Activate SOON auctions when start_date arrives
+        if self.status == 'SOON' and self.start_date and now >= self.start_date:
+            self.status = 'ACTIVE'
+            self.save(update_fields=['status'])
+            return True
+        
+        # Close expired ACTIVE auctions
         if self.status == 'ACTIVE' and self.is_expired:
             self.status = 'CLOSED'
             
@@ -161,6 +170,7 @@ class Car(models.Model):
                 
             self.save(update_fields=['status', 'winner'])
             return True
+        
         return False
 
     def __str__(self):

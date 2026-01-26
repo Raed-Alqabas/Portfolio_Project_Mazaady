@@ -44,7 +44,6 @@ class Command(BaseCommand):
         from django.utils import timezone
         
         car.status = 'CLOSED'
-        car.closed_at = timezone.now()  # Track when closed
         
         # Find highest bid
         highest_bid = car.bids.order_by('-amount').first()

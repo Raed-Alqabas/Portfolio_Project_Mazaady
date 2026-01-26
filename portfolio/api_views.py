@@ -152,9 +152,10 @@ def public_cars_api(request):
     
     queryset = queryset.prefetch_related('images', 'bids')
     
-    # Reactive check: update status if expired for results
-    # (Only needed for items that aren't already CLOSED)
-    for car in queryset.filter(status='ACTIVE'):
+    # Reactive check: update status for SOON and ACTIVE cars
+    # SOON -> ACTIVE when start_date arrives
+    # ACTIVE -> CLOSED when expired
+    for car in queryset.filter(status__in=['SOON', 'ACTIVE']):
         car.check_status()
         
     # Re-query after status updates to get accurate final list
@@ -356,13 +357,14 @@ def public_car_detail_api(request, pk):
     from .models import Car
     from django.db.models import Q
     try:
-        # Allow viewing if car is ACTIVE OR if the requester is the owner
+        # Allow viewing if car is ACTIVE, CLOSED, or SOON (preview)
+        # OR if the requester is the owner (can view their own cars)
         if request.user.is_authenticated:
-            car = Car.objects.get(Q(pk=pk) & (Q(status='ACTIVE') | Q(status='CLOSED') | Q(user=request.user)))
+            car = Car.objects.get(Q(pk=pk) & (Q(status__in=['ACTIVE', 'CLOSED', 'SOON']) | Q(user=request.user)))
         else:
-            car = Car.objects.get(Q(pk=pk) & (Q(status='ACTIVE') | Q(status='CLOSED')))
+            car = Car.objects.get(Q(pk=pk) & Q(status__in=['ACTIVE', 'CLOSED', 'SOON']))
             
-        # Reactive check
+        # Reactive check: update status if time has passed
         car.check_status()
             
         serializer = CarSerializer(car, context={'request': request})
@@ -600,16 +602,30 @@ def pay_bidding_access_api(request):
         "reference": {"order": str(payment.public_id)},
     }
     
-    r = requests.post(tap_url, json=payload, headers=headers)
-    data = r.json()
-    
-    tap_charge_id = data.get("id")
-    payment_url = data.get("transaction", {}).get("url")
-    
-    if not tap_charge_id or not payment_url:
+    try:
+        r = requests.post(tap_url, json=payload, headers=headers)
+        data = r.json()
+        print(f"DEBUG: Tap API Response: {data}")
+        
+        tap_charge_id = data.get("id")
+        payment_url = data.get("transaction", {}).get("url")
+        
+        if not tap_charge_id or not payment_url:
+            payment.status = "FAILED"
+            payment.save(update_fields=["status"])
+            error_msg = data.get("errors", [{}])[0].get("description", str(data))
+            print(f"DEBUG: Tap payment URL generation failed: {error_msg}")
+            return Response({'error': f"Failed to initiate payment: {error_msg}"}, status=400)
+    except requests.exceptions.RequestException as e:
         payment.status = "FAILED"
         payment.save(update_fields=["status"])
-        return Response({'error': f"Tap error: {data}"}, status=400)
+        print(f"DEBUG: Tap API request failed: {str(e)}")
+        return Response({'error': f"Payment service error: {str(e)}"}, status=500)
+    except Exception as e:
+        payment.status = "FAILED"
+        payment.save(update_fields=["status"])
+        print(f"DEBUG: Unexpected error in pay_bidding_access: {str(e)}")
+        return Response({'error': f"An unexpected error occurred: {str(e)}"}, status=500)
     
     payment.tap_charge_id = tap_charge_id
     payment.save(update_fields=["tap_charge_id"])
@@ -654,8 +670,6 @@ def dashboard_api(request):
         won_count += 1
         highest_bid = car.bids.order_by('-amount').first()
         total_spending += float(highest_bid.amount)
-        if car.closed_at:
-            dates_with_wins.add(car.closed_at.date())
             
     # Count active bids
     for car in cars:
@@ -1019,7 +1033,7 @@ def admin_dashboard_api(request):
     won_today = Car.objects.filter(
         status='CLOSED', 
         winner__isnull=False,
-        closed_at__gte=today_start
+        updated_at__gte=today_start
     )
     for car in won_today:
         highest_bid = car.bids.order_by('-amount').first()

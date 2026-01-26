@@ -199,7 +199,7 @@ export function AuctionsPage() {
                         </div>
                         <div className="text-left">
                           <div className="text-xs opacity-90">
-                            {auction.status === 'CLOSED' ? 'السعر النهائي' : 'المزايدة الحالية'}
+                            {auction.status === 'SOON' ? 'سعر البداية' : 'المزايدة الحالية'}
                           </div>
                           <div className="font-bold">
                             {Number(auction.current_bid).toLocaleString()} ريال
@@ -227,9 +227,16 @@ export function AuctionsPage() {
                           </>
                         )}
                       </div>
-                      <Badge variant="outline" className="text-xs">
-                        {auction.brand}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        {auction.status === 'SOON' && (
+                          <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                            عرض فقط
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="text-xs">
+                          {auction.brand}
+                        </Badge>
+                      </div>
                     </div>
                   </CardContent>
                 </Link>
