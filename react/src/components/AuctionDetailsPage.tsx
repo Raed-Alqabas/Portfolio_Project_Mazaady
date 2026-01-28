@@ -55,8 +55,21 @@ export function AuctionDetailsPage() {
     try {
       const response = await api.get(`/cars/public/${id}/`);
       setCar(response.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching car details:", error);
+      
+      // If we get a 404 or permission error, try fetching without the 'public' prefix
+      // This handles SOON status cars that might be restricted in public endpoint
+      if (error.response?.status === 404 || error.response?.status === 403) {
+        try {
+          const response = await api.get(`/cars/${id}/`);
+          setCar(response.data);
+          return;
+        } catch (fallbackError) {
+          console.error("Fallback fetch also failed:", fallbackError);
+        }
+      }
+      
       if (showError) toast.error("حدث خطأ أثناء تحميل بيانات الإعلان");
     } finally {
       setIsLoading(false);
@@ -146,9 +159,10 @@ export function AuctionDetailsPage() {
       
       // Redirect to Tap payment
       window.location.href = paymentUrl;
-    } catch (paymentError) {
+    } catch (paymentError: any) {
       console.error('Payment initiation error:', paymentError);
-      toast.error('حدث خطأ أثناء بدء عملية الدفع');
+      const errorMessage = paymentError.response?.data?.error || 'حدث خطأ أثناء بدء عملية الدفع';
+      toast.error(errorMessage);
       setIsRedirectingToPayment(false);
     }
   };
@@ -356,7 +370,7 @@ export function AuctionDetailsPage() {
                   <div>
                     <p className="text-blue-900 mb-1">معلومات الفحص</p>
                     <p className="text-sm text-blue-700">
-                      السيارة خضعت لفحص شامل من قبل خبراء معتمدين وحصلت على تقييم ممتاز
+                      تم فحص السيارة في مراكز معتمدة لضمان جودتها وسلامتها قبل إدراجها في المزاد.
                     </p>
                   </div>
                 </div>
@@ -432,7 +446,7 @@ export function AuctionDetailsPage() {
                       )}
                     </div>
 
-                  ) : car.status === 'PENDING' ? (
+                  ) : car.status === 'PENDING' || car.status === 'SOON' ? (
                     <div className="text-center py-6 space-y-4">
                       <div className="w-16 h-16 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
                         <Clock className="w-8 h-8 text-yellow-600" />
@@ -562,14 +576,14 @@ export function AuctionDetailsPage() {
                     <FileText className="w-4 h-4" />
                     {car.inspection_report ? "عرض تقرير الفحص" : "تقرير الفحص غير متوفر"}
                   </Button>
-                  <Button variant="outline" className="w-full justify-start gap-2">
+                  {/*<Button variant="outline" className="w-full justify-start gap-2">
                     <Car className="w-4 h-4" />
                     طلب معاينة السيارة
                   </Button>
                   <Button variant="outline" className="w-full justify-start gap-2">
                     <Shield className="w-4 h-4" />
                     طلب سجل الصيانة
-                  </Button>
+                  </Button>*/}
                 </CardContent>
               </Card>
             </div>

@@ -45,7 +45,7 @@ export function RootLayout() {
   // Navigation items
   const navItems = [
     { path: "/", label: "الرئيسية", icon: Home },
-    { path: "/auctions", label: "المزايدات", icon: Gavel },
+    { path: "/auctions", label: "المزادات", icon: Gavel },
     { path: "/cars", label: "السيارات", icon: Car },
   ];
 

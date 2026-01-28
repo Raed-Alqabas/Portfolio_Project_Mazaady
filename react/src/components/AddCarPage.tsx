@@ -222,6 +222,16 @@ export function AddCarPage() {
       return;
     }
 
+    if (!inspectionReport) {
+      toast.error("يرجى إرفاق تقرير فحص السيارة");
+      return;
+    }
+
+    if (!inspectionReport) {
+      toast.error("يرجى إرفاق تقرير فحص السيارة");
+      return;
+    }
+
     const startDateTime = new Date(formData.startDate);
     const startHour = startDateTime.getHours();
     const startMinutes = startDateTime.getMinutes();
@@ -302,7 +312,7 @@ export function AddCarPage() {
     "أزرق سماوي", "رمادي غامق", "رمادي فاتح", "أخضر غامق"
   ];
 
-  const validCylinders = ["2", "3", "4", "5", "6", "8", "10", "12", "16"];
+  const validCylinders = ["3", "4","6", "8", "10", "12"];
 
   const fuelTypes = ["بنزين", "ديزل", "هايبرد", "كهربائي"];
   const transmissionTypes = ["أوتوماتيك", "مانيوال"];
@@ -387,7 +397,7 @@ export function AddCarPage() {
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="title">عنوان الإعلان *</Label>
+                  <Label htmlFor="title">عنوان الإعلان <span className="text-red-500">*</span></Label>
                   <Input
                     id="title"
                     placeholder="مثال: تويوتا كامري 2023 فل كامل"
@@ -398,7 +408,7 @@ export function AddCarPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="brand">الماركة *</Label>
+                  <Label htmlFor="brand">الماركة <span className="text-red-500">*</span></Label>
                   <Select value={formData.brand} onValueChange={(value: string) => handleInputChange("brand", value)}>
                     <SelectTrigger id="brand">
                       <SelectValue placeholder="اختر الماركة" />
@@ -431,7 +441,7 @@ export function AddCarPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="model">الموديل *</Label>
+                  <Label htmlFor="model">الموديل <span className="text-red-500">*</span></Label>
                   <Input
                     id="model"
                     placeholder="مثال: كامري أو X5"
@@ -446,7 +456,7 @@ export function AddCarPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="year">سنة الصنع *</Label>
+                  <Label htmlFor="year">سنة الصنع <span className="text-red-500">*</span></Label>
                   <Input
                     id="year"
                     type="number"
@@ -464,7 +474,7 @@ export function AddCarPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="color">اللون *</Label>
+                  <Label htmlFor="color">اللون <span className="text-red-500">*</span></Label>
                   <Select value={formData.color} onValueChange={(value: string) => handleInputChange("color", value)}>
                     <SelectTrigger id="color">
                       <SelectValue placeholder="اختر اللون" />
@@ -478,7 +488,7 @@ export function AddCarPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="location">الموقع *</Label>
+                  <Label htmlFor="location">الموقع <span className="text-red-500">*</span></Label>
                   <Select value={formData.location} onValueChange={(value: string) => handleInputChange("location", value)}>
                     <SelectTrigger id="location">
                       <SelectValue placeholder="اختر المدينة" />
@@ -516,7 +526,7 @@ export function AddCarPage() {
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="mileage">المسافة المقطوعة (كم) *</Label>
+                  <Label htmlFor="mileage">المسافة المقطوعة (كم) <span className="text-red-500">*</span></Label>
                   <Input
                     id="mileage"
                     type="number"
@@ -534,7 +544,7 @@ export function AddCarPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="fuel">نوع الوقود *</Label>
+                  <Label htmlFor="fuel">نوع الوقود <span className="text-red-500">*</span></Label>
                   <Select value={formData.fuel} onValueChange={(value: string) => handleInputChange("fuel", value)}>
                     <SelectTrigger id="fuel">
                       <SelectValue placeholder="اختر نوع الوقود" />
@@ -548,7 +558,7 @@ export function AddCarPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="transmission">ناقل الحركة *</Label>
+                  <Label htmlFor="transmission">ناقل الحركة <span className="text-red-500">*</span></Label>
                   <Select value={formData.transmission} onValueChange={(value: string) => handleInputChange("transmission", value)}>
                     <SelectTrigger id="transmission">
                       <SelectValue placeholder="اختر ناقل الحركة" />
@@ -594,7 +604,7 @@ export function AddCarPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="condition">الحالة العامة *</Label>
+                  <Label htmlFor="condition">الحالة العامة <span className="text-red-500">*</span></Label>
                   <Select value={formData.condition} onValueChange={(value: string) => handleInputChange("condition", value)}>
                     <SelectTrigger id="condition">
                       <SelectValue placeholder="اختر الحالة" />
@@ -624,7 +634,7 @@ export function AddCarPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="accidents">هل تعرضت لحوادث؟ *</Label>
+                  <Label htmlFor="accidents">هل تعرضت لحوادث؟ <span className="text-red-500">*</span></Label>
                   <Select value={formData.accidents} onValueChange={(value: string) => handleInputChange("accidents", value)}>
                     <SelectTrigger id="accidents">
                       <SelectValue placeholder="اختر" />
@@ -645,10 +655,10 @@ export function AddCarPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-primary" />
-                تقرير الفحص
+                تقرير الفحص <span className="text-red-500">*</span>
               </CardTitle>
               <CardDescription>
-                إرفاق تقرير فحص السيارة (اختياري)
+                إرفاق تقرير فحص السيارة (مطلوب)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -701,7 +711,7 @@ export function AddCarPage() {
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="startBid">سعر البداية (ريال) *</Label>
+                  <Label htmlFor="startBid">سعر البداية (ريال) <span className="text-red-500">*</span></Label>
                   <Input
                     id="startBid"
                     type="number"
@@ -718,7 +728,7 @@ export function AddCarPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="auctionDuration">مدة المزاد *</Label>
+                  <Label htmlFor="auctionDuration">مدة المزاد <span className="text-red-500">*</span></Label>
                   <Select value={formData.auctionDuration} onValueChange={(value: string) => handleInputChange("auctionDuration", value)}>
                     <SelectTrigger id="auctionDuration">
                       <SelectValue />
@@ -732,7 +742,7 @@ export function AddCarPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="startDate">تاريخ بدء المزاد *</Label>
+                  <Label htmlFor="startDate">تاريخ بدء المزاد <span className="text-red-500">*</span></Label>
                   <Input
                     id="startDate"
                     type="datetime-local"
